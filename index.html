@@ -37,6 +37,37 @@
   /* no fullscreen o palco ocupa a tela e nada mais aparece */
   #palco:fullscreen{width:100vh; max-width:100vw; border-radius:0; font-size:calc(min(100vw,100vh)/100);}
 
+  /* Miniatura de 64px embutida no HTML: pinta junto com a pagina, antes de
+     qualquer download. Sem ela o visitante encara um quadrado preto pelos
+     ~3s que os 2 MB do mosaico levam pra chegar - e essa e a primeira
+     impressao de quem clica no link do post. */
+  #previa{
+    position:absolute; inset:0; background-size:100% 100%;
+    background-image:url(data:image/jpeg;base64,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);
+    filter:blur(12px) saturate(1.15); transform:scale(1.06);
+    transition:opacity .5s;
+  }
+  #previa.pronto{opacity:0}
+
+  #carregando{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index:8; text-align:center; width:62%; transition:opacity .4s;
+  }
+  #carregando.pronto{opacity:0; pointer-events:none}
+  #carregando span{
+    display:block; font-size:1.6em; font-weight:300; letter-spacing:.14em;
+    color:#bcd2e6; text-shadow:0 1px 10px rgba(0,0,0,.9);
+  }
+  #barra{
+    margin-top:1.1em; height:2px; border-radius:2px;
+    background:rgba(255,255,255,.14); overflow:hidden;
+  }
+  #barra i{
+    display:block; height:100%; width:0;
+    background:linear-gradient(90deg, rgb(var(--ac2)), rgb(var(--ac1)));
+    transition:width .18s linear;
+  }
+
   #camera{position:absolute; inset:0; transform-origin:50% 50%;}
   #empurra{position:absolute; inset:0; transform-origin:0 0;}
   #mosaico{width:100%; height:100%; display:block;}
@@ -271,7 +302,9 @@
 </header>
 
 <div id="palco" class="p-ciano f-sonar">
-  <div id="camera"><div id="empurra"><img id="mosaico" src="assets/mosaico.jpg" alt=""></div></div>
+  <div id="previa"></div>
+  <div id="camera"><div id="empurra"><img id="mosaico" alt=""></div></div>
+  <div id="carregando"><span></span><div id="barra"><i></i></div></div>
   <div class="varredura v1"></div>
   <div class="varredura v2"></div>
   <div id="foco"></div>
@@ -1035,7 +1068,9 @@ $("mosaicos").addEventListener("click", async (e) => {
   mosaicoAtual = b.dataset.m;
 
   estado.textContent = T("carregando");
-  await new Promise((r) => { mosaico.onload = mosaico.onerror = r; mosaico.src = mosaicoAtual; });
+  mostrarCarregando(true);
+  await carregarMosaico(mosaicoAtual, preencher);
+  mostrarCarregando(false);
 
   // A celula de antes nao vale noutro mosaico: grade e posicoes sao outras.
   $("escolha").classList.remove("aberto");
@@ -1116,10 +1151,63 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "f" || e.key === "F") $("tela").click();
 });
 
-// espera as imagens, senao o primeiro segundo engasga
-Promise.all([...document.images].map(i =>
-  i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })
-)).then(() => { aplicarIdioma(); tocar(); });
+/**
+ * Baixa o mosaico mostrando progresso de verdade.
+ *
+ * `img.src = url` nao diz quanto falta, e sao 2 MB: o visitante ficaria
+ * olhando pra nada sem saber se a pagina travou. Com fetch da pra ler o
+ * corpo em pedacos e contar - e quando o servidor nao manda
+ * content-length, a barra simplesmente nao se move, o que ainda e melhor
+ * que ausencia de sinal.
+ */
+async function carregarMosaico(url, aoProgredir){
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok || !resp.body) throw new Error("sem corpo");
+    const total = +(resp.headers.get("content-length") || 0);
+    const leitor = resp.body.getReader();
+    const pedacos = [];
+    let lido = 0;
+    for (;;) {
+      const { done, value } = await leitor.read();
+      if (done) break;
+      pedacos.push(value);
+      lido += value.length;
+      if (total) aoProgredir(lido / total);
+    }
+    const blob = new Blob(pedacos, { type: resp.headers.get("content-type") || "image/jpeg" });
+    const objeto = URL.createObjectURL(blob);
+    await new Promise((r, j) => { mosaico.onload = r; mosaico.onerror = j; mosaico.src = objeto; });
+    aoProgredir(1);
+  } catch {
+    // Qualquer tropeco (fetch barrado, file://, servidor estranho) cai no
+    // caminho simples: sem barra, mas a imagem carrega.
+    await new Promise((r) => { mosaico.onload = mosaico.onerror = r; mosaico.src = url; });
+  }
+}
+
+const caixaCarregando = $("carregando");
+const preencher = (f) => { $("barra").firstElementChild.style.width = Math.round(f * 100) + "%"; };
+
+function mostrarCarregando(mostrar){
+  caixaCarregando.classList.toggle("pronto", !mostrar);
+  if (mostrar) {
+    caixaCarregando.querySelector("span").textContent = T("carregando");
+    preencher(0);
+  }
+}
+
+(async () => {
+  aplicarIdioma();
+  mostrarCarregando(true);
+  await carregarMosaico(mosaicoAtual, preencher);
+  await Promise.all([...document.images].map(i =>
+    i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })
+  ));
+  mostrarCarregando(false);
+  $("previa").classList.add("pronto");
+  tocar();
+})();
 </script>
 </body>
 </html>
