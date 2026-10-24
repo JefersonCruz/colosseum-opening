@@ -80,7 +80,7 @@
   #foco{position:absolute; left:50%; top:50%; width:300%; height:300%;
     transform:translate(-50%,-50%); opacity:0; pointer-events:none;
     background:radial-gradient(circle at 50% 50%,
-      rgba(0,0,0,.30) 0%, rgba(0,0,0,.62) 6%, rgba(0,0,0,.90) 14%, rgba(0,0,0,.96) 34%);}
+      rgba(0,0,0,.10) 0%, rgba(0,0,0,.42) 6%, rgba(0,0,0,.68) 14%, rgba(0,0,0,.80) 34%);}
   #anel{position:absolute; left:50%; top:50%;
     transform:translate(-50%,-50%);
     border:.2em solid rgba(var(--ac1),.95); border-radius:9%; opacity:0;
@@ -118,8 +118,13 @@
   #credito{position:absolute; right:2.5%; bottom:2.2%; font-size:1.05em; font-weight:200;
     letter-spacing:.14em; color:#44566b; opacity:0;}
 
-  .vinheta{position:absolute; inset:0; z-index:7; pointer-events:none;
-    background:radial-gradient(ellipse 78% 78% at 50% 50%, transparent 42%, rgba(0,0,0,.72) 100%);}
+  /* A vinheta serve ao cartao FINAL. Ligada desde o primeiro quadro ela
+     apagava as bordas do plano de abertura - medido: centro em 98% do
+     brilho original, mas borda em 34% e canto em 44%. E esse plano existe
+     justamente pra mostrar os ~3.000 logos, muitos deles na borda.
+     Agora entra junto com a aproximacao, e mais suave. */
+  .vinheta{position:absolute; inset:0; z-index:7; pointer-events:none; opacity:0;
+    background:radial-gradient(ellipse 82% 82% at 50% 50%, transparent 55%, rgba(0,0,0,.58) 100%);}
   #cortina{position:absolute; inset:0; background:#000; opacity:1; z-index:9; pointer-events:none;}
 
   /* ============ PALETAS ============
@@ -158,6 +163,7 @@
   .tocando .v2       {animation:varrer calc(1.7s*var(--r)) cubic-bezier(.4,0,.2,1) calc(2.6s*var(--r)) forwards}
   .tocando #chapeu   {animation:subir calc(1.1s*var(--r)) ease-out calc(1.2s*var(--r)) forwards, descer calc(.8s*var(--r)) ease-in calc(4.4s*var(--r)) forwards}
   .tocando #empurra  {animation:empurrar calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards}
+  .tocando .vinheta  {animation:aparecer calc(3.4s*var(--r)) ease-in calc(4.4s*var(--r)) forwards}
   .tocando #foco     {animation:focoSegue calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards,
                                 aparecer calc(2.6s*var(--r)) ease-in calc(4.6s*var(--r)) forwards,
                                 sumir calc(1.3s*var(--r)) ease-in-out calc(9.1s*var(--r)) forwards}
@@ -184,7 +190,9 @@
   @keyframes sumir{to{opacity:0}}
   @keyframes aparecer{to{opacity:1}}
   @keyframes creditar{to{opacity:.85}}
-  @keyframes apagar{to{filter:brightness(.22)}}
+  /* .45, nao .22: medido, o quadro caia pra 2 de 255 aos 8s - os vizinhos
+     sumiam, e com eles o "voce e um entre milhares", que e o ponto da cena. */
+  @keyframes apagar{to{filter:brightness(.45)}}
   @keyframes respirar{0%{transform:scale(1)} 100%{transform:scale(1.045)}}
   @keyframes varrer{0%{opacity:0;top:-5%} 10%{opacity:.85} 90%{opacity:.85} 100%{opacity:0;top:105%}}
   @keyframes revelar{0%{opacity:0} 100%{opacity:1}}
