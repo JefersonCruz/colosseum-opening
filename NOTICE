@@ -1,0 +1,30 @@
+VILIGION — Colosseum opening
+Copyright (c) 2026 VILIGION contributors
+
+The MIT license in LICENSE covers THE CODE in this repository: localizar.py,
+gerar.py, modelo.html, and the documentation.
+
+IT DOES NOT COVER THE IMAGES.
+
+  assets/mosaico.jpg
+      The Crypto World's Fair participants mosaic, published by Colosseum.
+      It contains the logos and trademarks of roughly three thousand
+      projects. Those marks belong to their respective owners. The file is
+      included here only so the live demo can show the tool working, and it
+      is NOT licensed to you under the MIT terms above.
+
+  assets/mosaico-2.jpg
+      A second participants mosaic, published by @solana_sailor. Same terms:
+      the marks in it belong to their owners, and it is included only so the
+      tool can search it. Not licensed to you under the MIT terms above.
+
+  assets/exemplo.png
+      The VILIGION mark. Not licensed for reuse.
+
+If you use this tool, supply your own copy of the mosaic. Making a post about
+being a participant is ordinary use; redistributing three thousand companies'
+marks as a packaged asset is not, and the MIT license on the code does not
+grant you the right to do it.
+
+If you are Colosseum, or a trademark owner who would rather not appear here,
+open an issue and the demo image comes down.

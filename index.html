@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colosseum Opening</title>
+<meta name="description" content="Drop your logo. It finds your tile in the Crypto World's Fair mosaic and builds your opening video.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Trios RGB em vez de hex, pra que rgba(var(--ac1), .5) funcione.
+       A paleta e trocada no #palco, nao aqui, entao a interface da pagina
+       nao pisca de cor junto com o video. */
+    --ac1:56,189,248; --ac2:37,99,235;
+    --ciano:rgb(var(--ac1)); --azul:rgb(var(--ac2));
+    --texto:#cfe0f0; --fraco:#71869c;
+    --r:1;              /* multiplicador de ritmo - ver "ritmo" abaixo */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{
+    background:#05070b; color:var(--texto);
+    font-family:"Jost",system-ui,"Segoe UI",sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:16px; gap:16px;
+  }
+
+  /* ======================= O PALCO (1:1) ======================= */
+  #palco{
+    position:relative; overflow:hidden; background:#000; flex:none;
+    width:min(100%, 78vh); aspect-ratio:1/1;
+    font-size:calc(min(100%, 78vh) / 100);
+    border-radius:10px;
+  }
+  /* no fullscreen o palco ocupa a tela e nada mais aparece */
+  #palco:fullscreen{width:100vh; max-width:100vw; border-radius:0; font-size:calc(min(100vw,100vh)/100);}
+
+  #camera{position:absolute; inset:0; transform-origin:50% 50%;}
+  #empurra{position:absolute; inset:0; transform-origin:0 0;}
+  #mosaico{width:100%; height:100%; display:block;}
+  /* 3x o palco e centrado na celula: assim o "buraco" claro acompanha ela
+     mesmo quando o limite de borda tira a celula do centro da tela.
+     As paradas do gradiente estao divididas por 3 pelo mesmo motivo. */
+  #foco{position:absolute; left:50%; top:50%; width:300%; height:300%;
+    transform:translate(-50%,-50%); opacity:0; pointer-events:none;
+    background:radial-gradient(circle at 50% 50%,
+      rgba(0,0,0,.30) 0%, rgba(0,0,0,.62) 6%, rgba(0,0,0,.90) 14%, rgba(0,0,0,.96) 34%);}
+  #anel{position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    border:.2em solid rgba(var(--ac1),.95); border-radius:9%; opacity:0;
+    box-shadow:0 0 2.2em rgba(var(--ac1),.55), inset 0 0 1.6em rgba(var(--ac1),.2);}
+  .varredura{position:absolute; left:0; right:0; height:2px; top:-5%; opacity:0;
+    background:linear-gradient(90deg,transparent,var(--ciano),transparent);
+    filter:blur(1.5px); box-shadow:0 0 2.5em rgba(var(--ac1),.5);}
+
+  .aurora{position:absolute; border-radius:50%; opacity:0; pointer-events:none;
+    filter:blur(6em); mix-blend-mode:screen;}
+  #aurora1{left:22%; top:26%; width:52em; height:52em; background:radial-gradient(circle,rgba(var(--ac2),.55),transparent 65%);}
+  #aurora2{left:70%; top:48%; width:44em; height:44em; background:radial-gradient(circle,rgba(var(--ac1),.42),transparent 65%);}
+  .pulso{position:absolute; left:50%; top:38%; width:30em; height:30em;
+    transform:translate(-50%,-50%) scale(.5);
+    border:1px solid rgba(var(--ac1),.5); border-radius:50%; opacity:0; pointer-events:none;}
+  #aro{position:absolute; inset:0; opacity:0; pointer-events:none;}
+  #aro circle{fill:none; stroke:url(#grad); stroke-width:.45; stroke-linecap:round;
+    stroke-dasharray:150.80; stroke-dashoffset:150.80;
+    transform:rotate(-90deg); transform-origin:50px 38px;
+    filter:drop-shadow(0 0 1px rgba(var(--ac1),.9));}
+  #brilho{position:absolute; left:50%; top:38%; width:78em; height:78em;
+    transform:translate(-50%,-50%) scale(.55); opacity:0; pointer-events:none;
+    background:radial-gradient(circle, rgba(var(--ac2),.42) 0%, rgba(var(--ac1),.13) 36%, transparent 66%);}
+  #nitido{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;}
+  #nitido.escuro{mix-blend-mode:screen;}
+  #nitido.claro{border-radius:4%; background:#fff; padding:1.2%;}
+
+  .linha{position:absolute; left:50%; transform:translateX(-50%); text-align:center; opacity:0; white-space:nowrap;}
+  #chapeu{top:7%; font-size:2em; font-weight:300; letter-spacing:.36em; text-indent:.36em; color:#9fb4c9; text-transform:uppercase;}
+  #regua{top:66%; width:0; height:1px; background:linear-gradient(90deg,transparent,rgba(var(--ac1),.8),transparent);}
+  #titulo{top:70%; font-size:2.5em; font-weight:300; letter-spacing:.4em; text-indent:.4em; color:#dce7f5;}
+  #frase{top:78%; font-size:1.7em; font-weight:200; letter-spacing:.1em; text-indent:.1em; color:#8296ad;}
+  #rodape{top:90%; font-size:1.5em; font-weight:300; letter-spacing:.3em; text-indent:.3em; color:#55687f; text-transform:uppercase;}
+  /* crédito discreto: pequeno, no canto, e removível porque isto é MIT */
+  #credito{position:absolute; right:2.5%; bottom:2.2%; font-size:1.05em; font-weight:200;
+    letter-spacing:.14em; color:#44566b; opacity:0;}
+
+  .vinheta{position:absolute; inset:0; z-index:7; pointer-events:none;
+    background:radial-gradient(ellipse 78% 78% at 50% 50%, transparent 42%, rgba(0,0,0,.72) 100%);}
+  #cortina{position:absolute; inset:0; background:#000; opacity:1; z-index:9; pointer-events:none;}
+
+  /* ============ PALETAS ============
+     Trocadas no #palco, nao no :root, pra que a interface da pagina nao
+     mude de cor junto com o video. A substituicao de custom property e
+     preguicosa, entao --ciano, definido no :root como rgb(var(--ac1)),
+     resolve com o --ac1 de QUEM o usa - ou seja, o do palco. */
+  #palco.p-ciano   { --ac1:56,189,248;  --ac2:37,99,235;  }
+  #palco.p-violeta { --ac1:167,139,250; --ac2:124,58,237; }
+  #palco.p-ambar   { --ac1:251,191,36;  --ac2:217,119,6;  }
+  #palco.p-verde   { --ac1:52,211,153;  --ac2:5,150,105;  }
+  #palco.p-mono    { --ac1:226,232,240; --ac2:148,163,184;}
+
+  /* ============ FINAIS ============
+     Tres tratamentos do fundo do cartao. O "limpo" existe porque nem toda
+     marca combina com anel de sonar - produto serio costuma ficar melhor
+     sem efeito nenhum alem do brilho. */
+  #malha{
+    position:absolute; inset:0; opacity:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(var(--ac1),.075) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--ac1),.075) 1px, transparent 1px);
+    background-size:5em 5em;
+    mask-image:radial-gradient(ellipse 62% 62% at 50% 38%, #000 18%, transparent 76%);
+    -webkit-mask-image:radial-gradient(ellipse 62% 62% at 50% 38%, #000 18%, transparent 76%);
+  }
+  #palco.f-limpo .pulso, #palco.f-limpo .aurora, #palco.f-limpo #aro,
+  #palco.f-grade .pulso, #palco.f-grade .aurora{ display:none; }
+  #palco.f-sonar #malha, #palco.f-limpo #malha{ display:none; }
+
+  /* ===================== TIMELINE ===================== */
+  .tocando #cortina  {animation:sumir calc(1s*var(--r)) ease-out 0s forwards, aparecer calc(1.6s*var(--r)) ease-in calc(16.4s*var(--r)) forwards}
+  .tocando #camera   {animation:respirar calc(4.6s*var(--r)) ease-in-out calc(.6s*var(--r)) forwards, sumir calc(1.3s*var(--r)) ease-in-out calc(9.1s*var(--r)) forwards}
+  .tocando #mosaico  {animation:apagar calc(1.7s*var(--r)) ease-in-out calc(5.9s*var(--r)) forwards}
+  .tocando .v1       {animation:varrer calc(2.3s*var(--r)) cubic-bezier(.4,0,.2,1) calc(1.0s*var(--r)) forwards}
+  .tocando .v2       {animation:varrer calc(1.7s*var(--r)) cubic-bezier(.4,0,.2,1) calc(2.6s*var(--r)) forwards}
+  .tocando #chapeu   {animation:subir calc(1.1s*var(--r)) ease-out calc(1.2s*var(--r)) forwards, descer calc(.8s*var(--r)) ease-in calc(4.4s*var(--r)) forwards}
+  .tocando #empurra  {animation:empurrar calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards}
+  .tocando #foco     {animation:focoSegue calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards,
+                                aparecer calc(2.6s*var(--r)) ease-in calc(4.6s*var(--r)) forwards,
+                                sumir calc(1.3s*var(--r)) ease-in-out calc(9.1s*var(--r)) forwards}
+  .tocando #anel     {animation:anelAcompanha calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards,
+                                marcar calc(1.1s*var(--r)) cubic-bezier(.22,1,.36,1) calc(5.6s*var(--r)) forwards,
+                                desmarcar calc(1.1s*var(--r)) ease-in calc(8.6s*var(--r)) forwards}
+  .tocando #nitido   {animation:acompanhar calc(5.6s*var(--r)) cubic-bezier(.55,.02,.25,1) calc(4.2s*var(--r)) forwards,
+                                revelar calc(1.1s*var(--r)) ease-out calc(5.9s*var(--r)) forwards,
+                                assentar calc(1.6s*var(--r)) cubic-bezier(.22,1,.36,1) calc(9.8s*var(--r)) forwards}
+  .tocando #brilho   {animation:florescer calc(2.2s*var(--r)) ease-out calc(10.0s*var(--r)) forwards}
+  .tocando .aurora   {animation:nascer calc(2.4s*var(--r)) ease-out calc(10.0s*var(--r)) forwards, vagar calc(19s*var(--r)) ease-in-out calc(10.0s*var(--r)) infinite}
+  .tocando #aro      {animation:aparecer calc(.4s*var(--r)) linear calc(10.6s*var(--r)) forwards}
+  .tocando #aro circle{animation:desenhar calc(1.8s*var(--r)) cubic-bezier(.3,0,.2,1) calc(10.6s*var(--r)) forwards}
+  .tocando .p1       {animation:sonar calc(4.2s*var(--r)) ease-out calc(11.4s*var(--r)) infinite}
+  .tocando .p2       {animation:sonar calc(4.2s*var(--r)) ease-out calc(12.8s*var(--r)) infinite}
+  .tocando .p3       {animation:sonar calc(4.2s*var(--r)) ease-out calc(14.2s*var(--r)) infinite}
+  .tocando #regua    {animation:esticar calc(1.1s*var(--r)) ease-out calc(11.6s*var(--r)) forwards}
+  .tocando #titulo   {animation:subir calc(1.1s*var(--r)) cubic-bezier(.22,1,.36,1) calc(11.8s*var(--r)) forwards}
+  .tocando #frase    {animation:subir calc(1.1s*var(--r)) cubic-bezier(.22,1,.36,1) calc(13.1s*var(--r)) forwards}
+  .tocando #rodape   {animation:subir calc(1.2s*var(--r)) cubic-bezier(.22,1,.36,1) calc(14.6s*var(--r)) forwards}
+  .tocando #malha    {animation:aparecer calc(2.2s*var(--r)) ease-out calc(10.2s*var(--r)) forwards}
+  .tocando #credito  {animation:creditar calc(1.4s*var(--r)) ease-out calc(15.2s*var(--r)) forwards}
+
+  @keyframes sumir{to{opacity:0}}
+  @keyframes aparecer{to{opacity:1}}
+  @keyframes creditar{to{opacity:.85}}
+  @keyframes apagar{to{filter:brightness(.22)}}
+  @keyframes respirar{0%{transform:scale(1)} 100%{transform:scale(1.045)}}
+  @keyframes varrer{0%{opacity:0;top:-5%} 10%{opacity:.85} 90%{opacity:.85} 100%{opacity:0;top:105%}}
+  @keyframes revelar{0%{opacity:0} 100%{opacity:1}}
+  @keyframes marcar{0%{opacity:0;transform:translate(-50%,-50%) scale(1.3)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  @keyframes desmarcar{to{opacity:0; transform:translate(-50%,-50%) scale(1.07)}}
+  @keyframes florescer{0%{opacity:0;transform:translate(-50%,-50%) scale(.55)} 100%{opacity:.95;transform:translate(-50%,-50%) scale(1)}}
+  @keyframes nascer{to{opacity:.85}}
+  @keyframes vagar{0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(6%,-5%) scale(1.14)} 66%{transform:translate(-5%,4%) scale(.92)}}
+  @keyframes desenhar{to{stroke-dashoffset:0}}
+  @keyframes sonar{0%{opacity:0;transform:translate(-50%,-50%) scale(.52)} 12%{opacity:.55} 100%{opacity:0;transform:translate(-50%,-50%) scale(2.3)}}
+  @keyframes esticar{0%{opacity:0;width:0} 100%{opacity:1;width:38em}}
+  @keyframes subir{0%{opacity:0;transform:translateX(-50%) translateY(1.1em)} 100%{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @keyframes descer{to{opacity:0; transform:translateX(-50%) translateY(-.8em)}}
+  /* empurrar / acompanhar / anelAcompanha / assentar sao gerados em JS,
+     porque dependem da celula de cada um - ver montarKeyframes() */
+
+  /* ======================= INTERFACE ======================= */
+  #idiomas{gap:5px;}
+  header{text-align:center; max-width:640px;}
+  h1{font-size:1.5rem; font-weight:400; letter-spacing:.02em; color:#eaf3fb;}
+  header p{font-size:.95rem; color:var(--fraco); margin-top:6px; line-height:1.5;}
+
+  #painel{width:min(100%, 78vh); display:flex; flex-direction:column; gap:10px;}
+  #solta{
+    border:1px dashed rgba(86,120,160,.45); border-radius:10px;
+    padding:18px; text-align:center; cursor:pointer; transition:.18s;
+    background:rgba(20,28,40,.5);
+  }
+  #solta:hover,#solta.sobre{border-color:var(--ciano); background:rgba(var(--ac1),.08);}
+  #solta b{color:#dcebf8; font-weight:400;}
+  #solta span{display:block; font-size:.82rem; color:var(--fraco); margin-top:4px;}
+
+  .acoes{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  button{
+    font:inherit; font-family:inherit; cursor:pointer; color:#cfe4f7;
+    background:rgba(var(--ac1),.12); border:1px solid rgba(var(--ac1),.3);
+    border-radius:999px; padding:.45rem 1rem; font-size:.85rem;
+  }
+  button:hover{background:rgba(var(--ac1),.24)}
+  button.secundario{background:transparent; border-color:rgba(86,120,160,.35); color:var(--fraco);}
+  button:disabled{opacity:.45; cursor:default}
+
+  #estado{font-size:.85rem; color:var(--fraco); text-align:center; min-height:1.2em;}
+
+  /* escolha da célula */
+  #escolha{display:none; background:rgba(12,18,26,.96); border:1px solid rgba(86,120,160,.25);
+    border-radius:10px; padding:14px;}
+  #escolha.aberto{display:block}
+  #escolha h2{font-size:.95rem; font-weight:400; color:#e3eff9; margin-bottom:4px;}
+  #escolha p{font-size:.8rem; color:var(--fraco); margin-bottom:10px; line-height:1.45;}
+  #grade{display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:8px;}
+  #grade figure{cursor:pointer; border:2px solid transparent; border-radius:8px; overflow:hidden; background:#000;}
+  #grade figure:hover{border-color:var(--ciano)}
+  #grade img{width:100%; display:block; image-rendering:pixelated;}
+  #grade figcaption{font-size:.62rem; color:var(--fraco); text-align:center; padding:3px 0;}
+
+  /* textos do cartão final */
+  details{border:1px solid rgba(86,120,160,.25); border-radius:10px; padding:10px 14px; background:rgba(12,18,26,.6);}
+  summary{cursor:pointer; font-size:.85rem; color:var(--texto);}
+  .campos{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+  .campos label{font-size:.75rem; color:var(--fraco);}
+  .campos input{
+    width:100%; font:inherit; font-size:.85rem; padding:.45rem .6rem; color:#e6f1fa;
+    background:rgba(5,9,14,.9); border:1px solid rgba(86,120,160,.3); border-radius:7px;
+  }
+  .campos input:focus{outline:none; border-color:var(--ciano)}
+  .manual{display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap}
+  .manual > div{flex:1; min-width:88px}
+
+  /* Bloco de retribuicao. Aparece SO depois que a pessoa gerou o video dela -
+     pedir follow antes de entregar algo e ruido; pedir depois e conversa. */
+  #depois{
+    display:none; border:1px solid rgba(var(--ac1),.3); border-radius:10px;
+    padding:12px 14px; background:linear-gradient(180deg,rgba(var(--ac1),.09),rgba(var(--ac1),.03));
+  }
+  #depois.aberto{display:block; animation:entrar .5s ease-out}
+  @keyframes entrar{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+  #depois p{font-size:.84rem; color:var(--texto); line-height:1.5; margin-bottom:10px;}
+  #depois p small{display:block; color:var(--fraco); font-size:.76rem; margin-top:4px;}
+  .btX{
+    display:inline-flex; align-items:center; gap:.45rem;
+    background:#fff; color:#000; border:none; font-weight:500;
+  }
+  .btX:hover{background:#e3e9ee}
+  .btX svg{width:.95em; height:.95em; fill:currentColor}
+
+  #escolhaMosaico{display:flex; flex-wrap:wrap; justify-content:center;
+    border:1px solid rgba(86,120,160,.25); border-radius:10px; padding:9px 14px; background:rgba(12,18,26,.6);}
+  .dica{font-size:.74rem; color:var(--fraco); font-style:italic;}
+
+  #efeitos{display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center;
+    border:1px solid rgba(86,120,160,.25); border-radius:10px; padding:10px 14px; background:rgba(12,18,26,.6);}
+  .grupo{display:flex; align-items:center; gap:8px;}
+  .rot{font-size:.72rem; color:var(--fraco); text-transform:uppercase; letter-spacing:.09em;}
+  .opcoes{display:flex; gap:5px;}
+  .cor{width:22px; height:22px; padding:0; border-radius:50%;
+    background:rgb(var(--m)); border:2px solid transparent;}
+  .cor.sel{border-color:#fff}
+  .pil{padding:.3rem .7rem; font-size:.78rem; border-radius:999px;}
+  .pil.sel{background:rgba(56,189,248,.3); border-color:rgba(56,189,248,.6); color:#eaf6ff}
+
+  footer{font-size:.78rem; color:#4b5d72; text-align:center; max-width:640px; line-height:1.6; padding-bottom:20px;}
+  footer a{color:#7ba6cc}
+  :fullscreen header, :fullscreen #painel, :fullscreen footer{display:none}
+</style>
+</head>
+<body>
+
+<div id="idiomas" class="opcoes">
+  <button class="pil sel" data-i="en">EN</button>
+  <button class="pil" data-i="zh">中文</button>
+  <button class="pil" data-i="ja">日本語</button>
+</div>
+
+<header>
+  <h1>Colosseum Opening</h1>
+  <p data-t="sub"></p>
+</header>
+
+<div id="palco" class="p-ciano f-sonar">
+  <div id="camera"><div id="empurra"><img id="mosaico" src="assets/mosaico.jpg" alt=""></div></div>
+  <div class="varredura v1"></div>
+  <div class="varredura v2"></div>
+  <div id="foco"></div>
+  <div id="anel"></div>
+  <div class="aurora" id="aurora1"></div>
+  <div class="aurora" id="aurora2"></div>
+  <div id="malha"></div>
+  <div id="brilho"></div>
+  <div class="pulso p1"></div><div class="pulso p2"></div><div class="pulso p3"></div>
+  <svg id="aro" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgb(var(--ac1))"/><stop offset="55%" stop-color="rgb(var(--ac2))"/>
+      <stop offset="100%" stop-color="rgb(var(--ac1))" stop-opacity=".25"/>
+    </linearGradient></defs>
+    <circle cx="50" cy="38" r="24"/>
+  </svg>
+  <img id="nitido" class="escuro" src="assets/exemplo.png" alt="">
+  <div class="linha" id="chapeu">Crypto World&rsquo;s Fair &nbsp;·&nbsp; Colosseum</div>
+  <div class="linha" id="regua"></div>
+  <div class="linha" id="titulo"></div>
+  <div class="linha" id="frase"></div>
+  <div class="linha" id="rodape"></div>
+  <div id="credito">made with viligion.com</div>
+  <div class="vinheta"></div>
+  <div id="cortina"></div>
+</div>
+
+<div id="painel">
+  <div class="grupo" id="escolhaMosaico">
+    <span class="rot" data-t="mosaico"></span>
+    <div class="opcoes" id="mosaicos">
+      <button class="pil sel" data-m="assets/mosaico.jpg">Colosseum</button>
+      <button class="pil" data-m="assets/mosaico-2.jpg">@solana_sailor</button>
+    </div>
+    <span class="dica" data-t="dica"></span>
+  </div>
+
+  <div id="solta">
+    <b data-t="solta"></b>
+    <span data-t="soltaSub"></span>
+    <input type="file" id="arquivo" accept="image/*" hidden>
+  </div>
+
+  <div id="estado"></div>
+
+  <div id="escolha">
+    <h2 data-t="qual"></h2>
+    <p><span data-t="qualSub"></span><br>
+      <b data-t="naoAqui"></b> <span data-t="naoAquiMeio"></span> <a href="#" id="irManual" data-t="naoAquiLink"></a>.</p>
+    <div id="grade"></div>
+  </div>
+
+  <div class="acoes">
+    <button id="tocar" data-t="play"></button>
+    <button id="tela" data-t="tela"></button>
+    <button id="reabrir" class="secundario" data-t="outra" disabled></button>
+    <button id="exemplo" class="secundario" data-t="exemplo"></button>
+  </div>
+
+  <div id="depois">
+    <p>
+      <span data-t="seuTxt"></span>
+      <small data-t="seuSub"></small>
+    </p>
+    <div class="acoes" style="justify-content:flex-start">
+      <a class="btX" id="seguir" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        <span data-t="seguir"></span>
+      </a>
+      <button id="rascunho" class="secundario" data-t="rascunho"></button>
+    </div>
+  </div>
+
+  <div id="efeitos">
+    <div class="grupo">
+      <span class="rot" data-t="cor"></span>
+      <div class="opcoes" id="paletas">
+        <button class="cor sel" data-p="p-ciano"   style="--m:56,189,248"  title="Cyan"></button>
+        <button class="cor"     data-p="p-violeta" style="--m:167,139,250" title="Violet"></button>
+        <button class="cor"     data-p="p-ambar"   style="--m:251,191,36"  title="Amber"></button>
+        <button class="cor"     data-p="p-verde"   style="--m:52,211,153"  title="Green"></button>
+        <button class="cor"     data-p="p-mono"    style="--m:226,232,240" title="Mono"></button>
+      </div>
+    </div>
+    <div class="grupo">
+      <span class="rot" data-t="ritmo"></span>
+      <div class="opcoes" id="ritmos">
+        <button class="pil sel" data-r="1">18s</button>
+        <button class="pil" data-r="0.67">12s</button>
+        <button class="pil" data-r="0.5">9s</button>
+      </div>
+    </div>
+    <div class="grupo">
+      <span class="rot" data-t="fim"></span>
+      <div class="opcoes" id="finais">
+        <button class="pil sel" data-f="f-sonar" data-t="sonar"></button>
+        <button class="pil" data-f="f-grade" data-t="grade"></button>
+        <button class="pil" data-f="f-limpo" data-t="limpo"></button>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary data-t="resumo"></summary>
+    <div class="campos">
+      <div><label for="t1" data-t="rotTitulo"></label><input id="t1" placeholder="WHAT YOU DO, IN FIVE WORDS"></div>
+      <div><label for="t2" data-t="rotLinha"></label><input id="t2" placeholder="One sentence that earns the click."></div>
+      <div><label for="t3" data-t="rotRodape"></label><input id="t3" placeholder="Your track · yoursite.com"></div>
+      <div class="manual">
+        <div><label for="ml" data-t="rotLin"></label><input id="ml" type="number" min="0" placeholder="51"></div>
+        <div><label for="mc" data-t="rotCol"></label><input id="mc" type="number" min="0" placeholder="39"></div>
+        <button id="usar" class="secundario" data-t="usar"></button>
+      </div>
+    </div>
+  </details>
+</div>
+
+<footer>
+  <span data-th="rodapeA"></span><br>
+  Code is MIT — <a href="https://github.com/JefersonCruz/colosseum-opening">source</a>. The mosaic is Colosseum&rsquo;s and carries ~3,000 other teams&rsquo; marks; it is here for this tool only, not relicensed. See NOTICE.<br>
+  Built by <a href="https://github.com/JefersonCruz/VILIGION">VILIGION</a> while preparing our own submission —
+  <a href="https://x.com/Viligion" target="_blank" rel="noopener">@Viligion</a> on X.
+</footer>
+
+<script>
+"use strict";
+
+/* ===================================================================
+   GEOMETRIA
+
+   Uma celula na linha L, coluna C de uma grade nc x nl tem centro em
+       fx = (C + 0.5) / nc     fy = (L + 0.5) / nl
+   da imagem. Com transform-origin:0 0, manter esse ponto no centro do
+   palco enquanto escala por k exige
+       tx = (0.5 - fx*k) * 100%        ty = (0.5 - fy*k) * 100%
+
+   E a celula ocupa 100/n % do quadro por unidade de escala, entao a
+   largura do logotipo nitido em cada passo e isso vezes k. Como largura
+   e linear em k, e como as marcas de keyframe sao AS MESMAS do zoom com
+   o mesmo easing, o logotipo fica grudado na celula em vez de escorregar.
+   (O CSS aplica o easing DENTRO de cada trecho entre marcas; marcas
+   diferentes divergem no meio do trecho mesmo com extremos iguais.)
+   =================================================================== */
+
+const MARCAS = [0, 28, 64, 100];
+const FRACOES = [1, 0.15625, 0.4375, 1];   // k relativo, nas marcas acima
+
+/**
+ * Monta as keyframes do zoom para a celula (linha, coluna).
+ *
+ * O deslocamento e LIMITADO as bordas da imagem, como num visualizador de
+ * mapa. Sem isso, uma celula perto da borda faz a camera olhar pra fora do
+ * mosaico e o quadro enche de preto - medido na celula do VILIGION, que e a
+ * 4a de baixo pra cima: o vazio aparecia durante os dois primeiros tercos da
+ * aproximacao. E a maioria dos ~3.000 projetos esta perto de alguma borda.
+ *
+ * Com o limite, a celula deixa de ficar sempre no centro: ela entra pelo
+ * canto, desliza pro meio conforme o zoom fecha, e so no fim fica centrada
+ * (quando a area visivel e pequena o bastante pra nao tocar as bordas).
+ * Por isso o anel, o logotipo nitido e o escurecimento precisam SEGUIR a
+ * posicao real da celula na tela, nao assumir o centro.
+ */
+function montarKeyframes(linha, coluna, nc, nl){
+  const fx = (coluna + 0.5) / nc, fy = (linha + 0.5) / nl;
+  const kmax = 0.29 * nc;                   // celula termina com 29% do quadro
+  const ks = [1, kmax*FRACOES[1], kmax*FRACOES[2], kmax];
+  const celula = 100 / nc;
+
+  const passo = (i) => {
+    const k = ks[i];
+    // u = quanto a imagem escorrega pra esquerda/cima, em telas.
+    // Centrar a celula pede u = f*k - 0.5; as bordas pedem 0 <= u <= k-1.
+    const ux = Math.max(0, Math.min(fx*k - 0.5, k - 1));
+    const uy = Math.max(0, Math.min(fy*k - 0.5, k - 1));
+    return {
+      m: MARCAS[i],
+      tx: (-ux * 100).toFixed(3),
+      ty: (-uy * 100).toFixed(3),
+      k: k.toFixed(5),
+      // onde a celula realmente cai na tela, depois do limite
+      sx: ((fx*k - ux) * 100).toFixed(3),
+      sy: ((fy*k - uy) * 100).toFixed(3),
+      w: (celula * k).toFixed(3),
+      a: (celula * k * 1.18).toFixed(3),
+    };
+  };
+  const p = [0,1,2,3].map(passo);
+  const ultimo = p[3];
+
+  return `
+@keyframes empurrar{
+  ${p.map(s => `${s.m}%{transform:translate(${s.tx}%, ${s.ty}%) scale(${s.k})}`).join("\n  ")}
+}
+@keyframes acompanhar{ ${p.map(s => `${s.m}%{width:${s.w}%; left:${s.sx}%; top:${s.sy}%}`).join(" ")} }
+@keyframes anelAcompanha{ ${p.map(s => `${s.m}%{width:${s.a}%; height:${s.a}%; left:${s.sx}%; top:${s.sy}%}`).join(" ")} }
+@keyframes focoSegue{ ${p.map(s => `${s.m}%{left:${s.sx}%; top:${s.sy}%}`).join(" ")} }
+@keyframes assentar{
+  0%  {width:${ultimo.w}%; left:${ultimo.sx}%; top:${ultimo.sy}%}
+  100%{width:42%; left:50%; top:38%}
+}
+#anel{width:${p[0].a}%; height:${p[0].a}%; left:${p[0].sx}%; top:${p[0].sy}%}
+#nitido{width:${p[0].w}%; left:${p[0].sx}%; top:${p[0].sy}%}
+#foco{left:${p[0].sx}%; top:${p[0].sy}%}
+`;
+}
+
+/* ===================================================================
+   LOCALIZADOR
+
+   Porque isto existe: animar um zoom e facil; achar sua celula entre
+   ~3.000 nao e - e sem isso o modelo nao serve, porque todo numero da
+   animacao depende de onde ela esta.
+   =================================================================== */
+
+function medias(dados, largura, altura){
+  const col = new Float64Array(largura), lin = new Float64Array(altura);
+  for (let y = 0; y < altura; y++){
+    let soma = 0;
+    for (let x = 0; x < largura; x++){
+      const i = (y*largura + x) * 4;
+      const v = (dados[i]*0.299 + dados[i+1]*0.587 + dados[i+2]*0.114);
+      col[x] += v; soma += v;
+    }
+    lin[y] = soma / largura;
+  }
+  for (let x = 0; x < largura; x++) col[x] /= altura;
+  return { col, lin };
+}
+
+/*
+ * Descobre a grade testando qual divisao poe as calhas nos pixels mais
+ * escuros. Autocorrelacao era o caminho obvio e respondeu 54 para uma grade
+ * de 55 - e uma coluna a menos nao falha com elegancia: o desalinhamento
+ * acumula ate os recortes pegarem duas celulas, e ai nada casa com nada.
+ */
+function detectarGrade(col, lin, L, A){
+  /*
+   * Colunas e linhas sao detectadas SEPARADAMENTE, de proposito.
+   * A primeira versao devolvia um numero so e assumia grade quadrada. Um
+   * mosaico de 4096x3948 encontrado em 24/10 tinha 55 colunas por 53 linhas
+   * com celulas quadradas - ali a versao antiga alinhava as colunas e
+   * desalinhava as linhas progressivamente, e nada casava.
+   */
+  const varrer = (perfil, tam) => {
+    let melhor = null, segundo = null;
+    for (let n = 20; n <= 140; n++){
+      let soma = 0, qtd = 0;
+      for (let i = 1; i < n; i++){
+        const x = Math.round(i*tam/n);
+        if (x > 0 && x < tam){ soma += perfil[x] + perfil[x-1]; qtd += 2; }
+      }
+      if (!qtd) continue;
+      const v = soma / qtd;
+      if (!melhor || v < melhor.v){ segundo = melhor; melhor = { v, n }; }
+      else if (!segundo || v < segundo.v){ segundo = { v, n }; }
+    }
+    return { n: melhor.n, conf: segundo ? segundo.v / melhor.v : 0 };
+  };
+  const c = varrer(col, L), l = varrer(lin, A);
+  return { nc: c.n, nl: l.n, confianca: Math.min(c.conf, l.conf) };
+}
+
+function normalizar(a){
+  let s = 0; for (let i = 0; i < a.length; i++) s += a[i];
+  const m = s / a.length;
+  let v = 0; for (let i = 0; i < a.length; i++){ const d = a[i]-m; v += d*d; }
+  const dp = Math.sqrt(v/a.length) + 1e-9;
+  const out = new Float64Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = (a[i]-m)/dp;
+  return out;
+}
+
+/** Desenha a imagem numa grade de nc x nl celulas de `lado` e le os pixels uma vez so. */
+function amostrar(img, nc, nl, lado){
+  const c = document.createElement("canvas");
+  c.width = nc * lado; c.height = nl * lado;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingQuality = "high";
+  g.drawImage(img, 0, 0, c.width, c.height);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+
+function blocoCinza(dados, largura, cx, cy, lado){
+  const out = new Float64Array(lado*lado);
+  for (let y = 0; y < lado; y++)
+    for (let x = 0; x < lado; x++){
+      const i = ((cy*lado + y)*largura + cx*lado + x) * 4;
+      out[y*lado + x] = dados[i]*0.299 + dados[i+1]*0.587 + dados[i+2]*0.114;
+    }
+  return out;
+}
+function blocoCor(dados, largura, cx, cy, lado){
+  const out = new Float64Array(lado*lado*3);
+  let j = 0;
+  for (let y = 0; y < lado; y++)
+    for (let x = 0; x < lado; x++){
+      const i = ((cy*lado + y)*largura + cx*lado + x) * 4;
+      out[j++] = dados[i]; out[j++] = dados[i+1]; out[j++] = dados[i+2];
+    }
+  return out;
+}
+
+/**
+ * Variantes do gabarito. Recortes porque alguns mosaicos acolchoam a arte
+ * dentro da celula; fundo preto E branco porque um PNG transparente nao diz
+ * qual dos dois a Colosseum usou ao montar o mosaico, e errar isso sozinho
+ * faz o casamento despencar.
+ */
+/**
+ * Variantes do gabarito, varrendo ESCALA nos dois sentidos.
+ *
+ * A primeira versao so recortava a arte para dentro (0%, 5%, 10%), ou seja,
+ * cobria apenas o caso em que a celula esta mais justa que o arquivo. O caso
+ * inverso - arquivo colado na borda, celula montada com folga - ficava de
+ * fora, e e o mais comum na pratica.
+ *
+ * Medido em 60 logotipos com 18% de diferenca de enquadramento: acerto em
+ * primeiro lugar subiu de 13% para 45%, e "aparecer entre as 12 mostradas"
+ * de 23% para 58%.
+ *
+ * O peso existe porque mais variantes dao mais chance de uma celula errada
+ * ter sorte em alguma delas: sem ele, o caso facil caia de 100% para 97%.
+ * A escala natural ganha o empate; as extremas so vencem quando vencem de
+ * verdade.
+ *
+ * Os dois fundos continuam porque um PNG transparente nao diz qual deles a
+ * Colosseum usou ao montar o mosaico.
+ */
+const ESCALAS = [[1.18,0.985],[1.0,1.0],[0.85,0.99],[0.72,0.975],[0.60,0.96]];
+
+function gabaritos(logo){
+  const base = document.createElement("canvas");
+  base.width = base.height = 128;
+  const bg = base.getContext("2d", { willReadFrequently: true });
+
+  const reduzir = (lado) => {
+    const c = document.createElement("canvas");
+    c.width = c.height = lado;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.imageSmoothingQuality = "high";
+    g.drawImage(base, 0, 0, lado, lado);
+    return g.getImageData(0, 0, lado, lado).data;
+  };
+
+  const saida = [];
+  for (const fundo of ["#000", "#fff"]){
+    for (const [s, peso] of ESCALAS){
+      bg.fillStyle = fundo; bg.fillRect(0, 0, 128, 128);
+      const lado = Math.round(128*s), o = Math.round((128 - lado)/2);
+      bg.drawImage(logo, o, o, lado, lado);
+      saida.push({
+        cinza: normalizar(blocoCinza(reduzir(32), 32, 0, 0, 32)),
+        cor:   normalizar(blocoCor(reduzir(16), 16, 0, 0, 16)),
+        peso,
+      });
+    }
+  }
+  return saida;   // 2 fundos x 5 escalas = 10 variantes
+}
+
+function produto(a, b){
+  let s = 0; for (let i = 0; i < a.length; i++) s += a[i]*b[i];
+  return s / a.length;
+}
+
+function procurar(img, nc, nl, logo, quantos){
+  const dC = amostrar(img, nc, nl, 32), largC = nc*32;
+  const dR = amostrar(img, nc, nl, 16), largR = nc*16;
+  const gabs = gabaritos(logo);
+
+  const achados = [];
+  for (let l = 0; l < nl; l++)
+    for (let c = 0; c < nc; c++){
+      const cinza = normalizar(blocoCinza(dC, largC, c, l, 32));
+      const cor   = normalizar(blocoCor(dR, largR, c, l, 16));
+      let melhor = -2;
+      for (const g of gabs){
+        const s = (produto(cinza, g.cinza)*0.5 + produto(cor, g.cor)*0.5) * g.peso;
+        if (s > melhor) melhor = s;
+      }
+      achados.push({ s: melhor, l, c });
+    }
+  achados.sort((a, b) => b.s - a.s);
+  return achados.slice(0, quantos);
+}
+
+/* ===================================================================
+   INTERFACE
+   =================================================================== */
+
+/* Um lugar so pra mudar, caso o endereco da pagina ou o perfil mudem. */
+const PAGINA = "https://jefersoncruz.github.io/colosseum-opening/";
+const PERFIL = "Viligion";
+
+/* ===================================================================
+   IDIOMAS
+
+   So a INTERFACE e traduzida. O texto do cartao final e o que a pessoa
+   digita, e os nomes proprios (Crypto World's Fair, Colosseum) ficam
+   iguais em qualquer idioma.
+
+   Traduzido sem revisao de falante nativo - se algo soar errado em zh ou
+   ja, e erro meu e vale corrigir antes de divulgar.
+   =================================================================== */
+const IDIOMAS = {
+  "en": {
+    "nome": "EN",
+    "sub": "Drop your logo. It finds your tile among the ~3,000 in the Crypto World’s Fair mosaic and builds your opening — then you record the square and post it.",
+    "mosaico": "Mosaic",
+    "dica": "not in one? try the other",
+    "solta": "Drop your logo here",
+    "soltaSub": "or click to choose · PNG or JPG · the same one you submitted, highest resolution you have",
+    "qual": "Which one is yours?",
+    "qualSub": "Ranked best first — but check, do not just take the first. Tiles are tiny and compressed, and a dark or minimal logo matches weakly.",
+    "naoAqui": "Not here?",
+    "naoAquiMeio": "That happens when your file is framed differently from the mosaic —",
+    "naoAquiLink": "type your row and column instead",
+    "play": "▶ Play",
+    "tela": "⛶ Fullscreen",
+    "outra": "Pick another tile",
+    "exemplo": "Show the example",
+    "cor": "Colour",
+    "ritmo": "Pace",
+    "fim": "Ending",
+    "sonar": "Sonar",
+    "grade": "Grid",
+    "limpo": "Clean",
+    "resumo": "End-card text & manual cell",
+    "rotTitulo": "Title",
+    "rotLinha": "Line",
+    "rotRodape": "Footer",
+    "rotLin": "Row",
+    "rotCol": "Column",
+    "usar": "Use these",
+    "seuTxt": "That is yours — record the square and post it.",
+    "seuSub": "The tool is free and nothing was uploaded. If it saved you some time, a follow is the whole price.",
+    "seguir": "Follow @Viligion",
+    "rascunho": "Draft the post",
+    "lendo": "Reading your logo…",
+    "buscando": "Searching the mosaic…",
+    "carregando": "Loading that mosaic…",
+    "carregado": "Mosaic loaded. Drop your logo to search it.",
+    "usando": "Using row {l}, column {c}.",
+    "mostrandoExemplo": "Showing the example.",
+    "escolhaSua": "Pick your tile:",
+    "confBaixa": "— low, set it by hand below",
+    "buscouEm": "searched in {ms}ms",
+    "esticado": "note: this mosaic is {r}:1, so it is stretched into the square frame",
+    "erroFaixa": "Row must be 0–{nl} and column 0–{nc}.",
+    "rascunhoAberto": "Draft opened on X — attach your recording before posting.",
+    "erroDisco": "Your browser will not let a page opened from disk read the mosaic’s pixels. Serve the folder over http instead — e.g. `python -m http.server` — or use the hosted page.",
+    "rodapeA": "Record the <b>square area</b>, not the whole screen — OBS or ScreenToGif do it; the Windows Game Bar does not. Runs ~18s and loops cleanly."
+  },
+  "zh": {
+    "nome": "中文",
+    "sub": "拖入你的 Logo。它会在 Crypto World’s Fair 马赛克的约 3000 个方块中找到你，并生成开场动画 — 然后你录制方形区域并发布。",
+    "mosaico": "马赛克",
+    "dica": "这张里没有？换另一张试试",
+    "solta": "把你的 Logo 拖到这里",
+    "soltaSub": "或点击选择 · PNG 或 JPG · 请用你提交时的那一份，分辨率越高越好",
+    "qual": "哪一个是你的？",
+    "qualSub": "按匹配度排序 — 但请确认，不要直接选第一个。方块很小且经过压缩，深色或极简的 Logo 匹配度较弱。",
+    "naoAqui": "不在这里？",
+    "naoAquiMeio": "当你的文件与马赛克里的裁切方式不同时会出现这种情况 —",
+    "naoAquiLink": "改为手动输入行号和列号",
+    "play": "▶ 播放",
+    "tela": "⛶ 全屏",
+    "outra": "换一个方块",
+    "exemplo": "查看示例",
+    "cor": "颜色",
+    "ritmo": "节奏",
+    "fim": "结尾",
+    "sonar": "声纳",
+    "grade": "网格",
+    "limpo": "简洁",
+    "resumo": "结尾文字与手动定位",
+    "rotTitulo": "标题",
+    "rotLinha": "副标题",
+    "rotRodape": "页脚",
+    "rotLin": "行",
+    "rotCol": "列",
+    "usar": "使用",
+    "seuTxt": "这就是你的 — 录制方形区域并发布吧。",
+    "seuSub": "工具免费，且没有上传任何文件。如果它帮你省了时间，关注一下就是全部的回报。",
+    "seguir": "关注 @Viligion",
+    "rascunho": "生成推文草稿",
+    "lendo": "正在读取你的 Logo…",
+    "buscando": "正在搜索马赛克…",
+    "carregando": "正在加载该马赛克…",
+    "carregado": "马赛克已加载。拖入你的 Logo 开始搜索。",
+    "usando": "使用第 {l} 行、第 {c} 列。",
+    "mostrandoExemplo": "正在显示示例。",
+    "escolhaSua": "选择你的方块：",
+    "confBaixa": "— 置信度低，请在下方手动设置",
+    "buscouEm": "耗时 {ms} 毫秒",
+    "esticado": "注意：这张马赛克是 {r}:1，因此被拉伸以适应正方形画面",
+    "erroFaixa": "行号必须在 0–{nl}，列号在 0–{nc}。",
+    "rascunhoAberto": "已在 X 打开草稿 — 发布前请附上你的录屏。",
+    "erroDisco": "浏览器不允许从本地文件打开的页面读取马赛克的像素。请通过 http 提供该文件夹 — 例如 `python -m http.server` — 或使用在线页面。",
+    "rodapeA": "请录制<b>正方形区域</b>，而不是整个屏幕 — OBS 或 ScreenToGif 可以做到，Windows 游戏栏不行。时长约 18 秒，循环顺畅。"
+  },
+  "ja": {
+    "nome": "日本語",
+    "sub": "ロゴをドロップしてください。Crypto World’s Fair のモザイク（約3,000枚）からあなたのタイルを見つけ、オープニングを生成します — あとは正方形の範囲を録画して投稿するだけです。",
+    "mosaico": "モザイク",
+    "dica": "見つからない場合はもう一方を",
+    "solta": "ここにロゴをドロップ",
+    "soltaSub": "またはクリックして選択 · PNG または JPG · 提出したものと同じファイル、できるだけ高解像度で",
+    "qual": "どれがあなたのものですか？",
+    "qualSub": "一致度順に並んでいます — ただし必ず確認してください。タイルは小さく圧縮されているため、暗い色やミニマルなロゴは一致しにくいです。",
+    "naoAqui": "ここにない場合は？",
+    "naoAquiMeio": "ファイルの余白がモザイクと異なるときに起こります —",
+    "naoAquiLink": "行と列を手入力してください",
+    "play": "▶ 再生",
+    "tela": "⛶ 全画面",
+    "outra": "別のタイルを選ぶ",
+    "exemplo": "サンプルを見る",
+    "cor": "色",
+    "ritmo": "長さ",
+    "fim": "エンディング",
+    "sonar": "ソナー",
+    "grade": "グリッド",
+    "limpo": "シンプル",
+    "resumo": "エンドカードのテキストと手動指定",
+    "rotTitulo": "タイトル",
+    "rotLinha": "サブタイトル",
+    "rotRodape": "フッター",
+    "rotLin": "行",
+    "rotCol": "列",
+    "usar": "適用",
+    "seuTxt": "これがあなたのものです — 正方形の範囲を録画して投稿してください。",
+    "seuSub": "このツールは無料で、何もアップロードされていません。時間の節約になったなら、フォローだけで十分です。",
+    "seguir": "@Viligion をフォロー",
+    "rascunho": "投稿の下書きを作成",
+    "lendo": "ロゴを読み込んでいます…",
+    "buscando": "モザイクを検索しています…",
+    "carregando": "そのモザイクを読み込んでいます…",
+    "carregado": "モザイクを読み込みました。ロゴをドロップして検索してください。",
+    "usando": "{l} 行、{c} 列を使用します。",
+    "mostrandoExemplo": "サンプルを表示中。",
+    "escolhaSua": "あなたのタイルを選んでください：",
+    "confBaixa": "— 信頼度が低いため、下で手動設定してください",
+    "buscouEm": "{ms}ミリ秒で検索",
+    "esticado": "注意：このモザイクは {r}:1 のため、正方形に引き伸ばされます",
+    "erroFaixa": "行は 0–{nl}、列は 0–{nc} の範囲です。",
+    "rascunhoAberto": "X で下書きを開きました — 投稿前に録画を添付してください。",
+    "erroDisco": "ブラウザはローカルファイルから開いたページにモザイクのピクセルを読ませません。http で配信してください — 例：`python -m http.server` — または公開ページをご利用ください。",
+    "rodapeA": "画面全体ではなく<b>正方形の範囲</b>を録画してください — OBS や ScreenToGif なら可能で、Windows ゲームバーでは不可です。約18秒で、きれいにループします。"
+  }
+};
+
+/** Idioma inicial pelo navegador: quem chega do Japao cai em japones. */
+let idioma = (() => {
+  const n = (navigator.language || "en").toLowerCase();
+  if (n.startsWith("zh")) return "zh";
+  if (n.startsWith("ja")) return "ja";
+  return "en";
+})();
+
+/** Texto traduzido, com substituicao simples de {chave}. */
+function T(chave, vals){
+  const d = IDIOMAS[idioma] || IDIOMAS.en;
+  let s = d[chave] !== undefined ? d[chave] : (IDIOMAS.en[chave] !== undefined ? IDIOMAS.en[chave] : chave);
+  if (vals) for (const k in vals) s = s.split("{" + k + "}").join(vals[k]);
+  return s;
+}
+
+function aplicarIdioma(){
+  document.documentElement.lang = idioma;
+  for (const el of document.querySelectorAll("[data-t]")) el.textContent = T(el.dataset.t);
+  for (const el of document.querySelectorAll("[data-th]")) el.innerHTML = T(el.dataset.th);
+  for (const el of document.querySelectorAll("[data-tp]")) el.placeholder = T(el.dataset.tp);
+  for (const b of document.querySelectorAll("#idiomas button"))
+    b.classList.toggle("sel", b.dataset.i === idioma);
+}
+
+const $ = (id) => document.getElementById(id);
+const palco = $("palco"), nitido = $("nitido"), mosaico = $("mosaico"), estado = $("estado");
+let celula = { linha: 51, coluna: 39, nc: 55, nl: 55 };   // o exemplo
+let logoAtual = null;                                 // Image do usuario
+let proprio = false;                                  // o video na tela e o dele?
+
+/** So pede retribuicao depois de entregar: o bloco aparece quando a pessoa
+ *  ja escolheu a celula dela, nunca enquanto ve o exemplo. */
+function retribuir(mostrar){
+  proprio = mostrar;
+  $("depois").classList.toggle("aberto", mostrar);
+}
+let estiloDin = null;
+
+function aplicar(){
+  if (!estiloDin){ estiloDin = document.createElement("style"); document.head.appendChild(estiloDin); }
+  estiloDin.textContent = montarKeyframes(celula.linha, celula.coluna, celula.nc, celula.nl);
+}
+
+function textos(){
+  const por = (el, v) => { el.innerHTML = v; el.style.display = v ? "" : "none"; };
+  por($("titulo"), ($("t1").value || "").trim());
+  por($("frase"),  ($("t2").value || "").trim());
+  por($("rodape"), ($("t3").value || "").trim() || "Crypto World&rsquo;s Fair &nbsp;·&nbsp; Colosseum");
+}
+
+function tocar(){
+  aplicar(); textos();
+  palco.classList.remove("tocando");
+  void palco.offsetWidth;              // forca o reinicio das animacoes
+  palco.classList.add("tocando");
+}
+
+/** Claro ou escuro: um logotipo feito para fundo branco lavaria a tela
+ *  inteira se recebesse mix-blend-mode:screen, entao ele ganha cartao proprio. */
+function ajustarFundo(img){
+  const c = document.createElement("canvas");
+  c.width = c.height = 48;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 48, 48);
+  const d = g.getImageData(0, 0, 48, 48).data;
+  let soma = 0, peso = 0;
+  for (let i = 0; i < d.length; i += 4){
+    const a = d[i+3]/255;
+    soma += (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) * a; peso += a;
+  }
+  const brilho = peso > 0 ? soma/peso : 0;
+  nitido.className = brilho > 118 ? "claro" : "escuro";
+}
+
+function mostrarCandidatas(lista, nc, nl){
+  const grade = $("grade");
+  grade.innerHTML = "";
+  const px = mosaico.naturalWidth / nc, py = mosaico.naturalHeight / nl;
+  const c = document.createElement("canvas");
+  c.width = Math.round(px); c.height = Math.round(py);
+  const g = c.getContext("2d");
+  lista.forEach((cand, i) => {
+    g.clearRect(0, 0, c.width, c.height);
+    g.drawImage(mosaico, Math.round(cand.c*px), Math.round(cand.l*py),
+                c.width, c.height, 0, 0, c.width, c.height);
+    const fig = document.createElement("figure");
+    const im = document.createElement("img"); im.src = c.toDataURL();
+    const cap = document.createElement("figcaption"); cap.textContent = `#${i+1} · ${cand.l},${cand.c}`;
+    fig.append(im, cap);
+    fig.onclick = () => {
+      celula = { linha: cand.l, coluna: cand.c, nc, nl };
+      $("escolha").classList.remove("aberto");
+      $("reabrir").disabled = false;
+      estado.textContent = T("usando", { l: cand.l, c: cand.c });
+      retribuir(!!logoAtual);
+      tocar();
+    };
+    grade.appendChild(fig);
+  });
+  $("escolha").classList.add("aberto");
+}
+
+async function usarLogo(arquivo){
+  if (!arquivo || !arquivo.type.startsWith("image/")) return;
+  estado.textContent = T("lendo");
+  const url = await new Promise((r) => {
+    const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(arquivo);
+  });
+  const img = new Image();
+  await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = url; });
+
+  logoAtual = img;
+  nitido.src = url;
+  ajustarFundo(img);
+  await buscar(img);
+}
+
+async function buscar(img){
+  estado.textContent = T("buscando");
+  // deixa a interface pintar antes de travar a thread com a busca
+  await new Promise((r) => setTimeout(r, 30));
+
+  const t0 = performance.now();
+  let pixels;
+  try {
+    pixels = (() => {
+      const c = document.createElement("canvas");
+      c.width = mosaico.naturalWidth; c.height = mosaico.naturalHeight;
+      const g = c.getContext("2d", { willReadFrequently: true });
+      g.drawImage(mosaico, 0, 0);
+      return g.getImageData(0, 0, c.width, c.height).data;
+    })();
+  } catch (err) {
+    /*
+     * Chrome recusa ler pixels de uma imagem carregada por file://, mesmo da
+     * mesma pasta. Entao abrir o index.html com dois cliques nao funciona - e
+     * a mensagem nativa ("tainted canvas") nao diz isso a ninguem.
+     */
+    estado.textContent = T("erroDisco");
+    return;
+  }
+  const { col, lin } = medias(pixels, mosaico.naturalWidth, mosaico.naturalHeight);
+
+  const grade = detectarGrade(col, lin, mosaico.naturalWidth, mosaico.naturalHeight);
+  const lista = procurar(mosaico, grade.nc, grade.nl, img, 12);
+  const ms = Math.round(performance.now() - t0);
+
+  $("mc").placeholder = String(grade.nc);
+  $("ml").placeholder = String(grade.nl);
+  // O palco e 1:1 e o mosaico e esticado pra preenche-lo. Se a imagem nao for
+  // quadrada isso deforma, e e melhor dizer do que deixar a pessoa estranhar.
+  const razao = mosaico.naturalWidth / mosaico.naturalHeight;
+  const torto = Math.abs(razao - 1) > 0.02
+    ? " · " + T("esticado", { r: razao.toFixed(2) })
+    : "";
+  estado.textContent = `${grade.nc}×${grade.nl} (${grade.confianca.toFixed(1)}×)`
+    + (grade.confianca < 1.8 ? " " + T("confBaixa") : "")
+    + ` · ${T("buscouEm", { ms })}${torto} · ` + T("escolhaSua");
+  mostrarCandidatas(lista, grade.nc, grade.nl);
+}
+
+/* --- eventos --- */
+$("solta").onclick = () => $("arquivo").click();
+$("arquivo").onchange = (e) => usarLogo(e.target.files[0]);
+["dragenter","dragover"].forEach(ev => $("solta").addEventListener(ev, (e) => {
+  e.preventDefault(); $("solta").classList.add("sobre");
+}));
+["dragleave","drop"].forEach(ev => $("solta").addEventListener(ev, (e) => {
+  e.preventDefault(); $("solta").classList.remove("sobre");
+}));
+$("solta").addEventListener("drop", (e) => usarLogo(e.dataTransfer.files[0]));
+
+/* ---- efeitos: paleta, ritmo, final ----
+   Cada grupo troca uma classe (ou uma variavel) no palco e retoca. Nada
+   disso mexe na geometria: cor, tempo e fundo do cartao sao independentes
+   da celula, entao trocar efeito nunca desalinha o logotipo. */
+function escolher(container, atributo, aplicar){
+  const alvo = $(container);
+  alvo.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-" + atributo + "]");
+    if (!b) return;
+    [...alvo.querySelectorAll("button")].forEach(x => x.classList.toggle("sel", x === b));
+    aplicar(b.dataset[atributo]);
+    tocar();
+  });
+}
+
+/*
+ * Dois mosaicos porque existem dois: o oficial da Colosseum (55x55) e um
+ * montado pela comunidade (55x53). Nem todo projeto esta nos dois, entao
+ * quem nao se acha num tenta o outro.
+ *
+ * O segundo so e baixado quando escolhido - carregar os dois de saida
+ * dobraria o peso da pagina para quem vai usar so um.
+ */
+let mosaicoAtual = "assets/mosaico.jpg";
+
+document.getElementById("idiomas").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-i]");
+  if (!b || b.dataset.i === idioma) return;
+  idioma = b.dataset.i;
+  aplicarIdioma();
+});
+
+$("mosaicos").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-m]");
+  if (!b || b.dataset.m === mosaicoAtual) return;
+  [...$("mosaicos").querySelectorAll("button")].forEach(x => x.classList.toggle("sel", x === b));
+  mosaicoAtual = b.dataset.m;
+
+  estado.textContent = T("carregando");
+  await new Promise((r) => { mosaico.onload = mosaico.onerror = r; mosaico.src = mosaicoAtual; });
+
+  // A celula de antes nao vale noutro mosaico: grade e posicoes sao outras.
+  $("escolha").classList.remove("aberto");
+  $("reabrir").disabled = true;
+  retribuir(false);
+  celula = { linha: 0, coluna: 0, nc: 55, nl: 55 };
+
+  if (logoAtual) {
+    await buscar(logoAtual);          // ja tem logotipo: procura de novo aqui
+  } else {
+    estado.textContent = T("carregado");
+    tocar();
+  }
+});
+
+escolher("paletas", "p", (v) => {
+  palco.classList.remove("p-ciano","p-violeta","p-ambar","p-verde","p-mono");
+  palco.classList.add(v);
+});
+escolher("ritmos", "r", (v) => palco.style.setProperty("--r", v));
+escolher("finais", "f", (v) => {
+  palco.classList.remove("f-sonar","f-grade","f-limpo");
+  palco.classList.add(v);
+});
+
+$("seguir").href = `https://x.com/intent/follow?screen_name=${PERFIL}`;
+$("rascunho").onclick = () => {
+  /*
+   * O intent do X nao aceita anexo, entao o video continua sendo anexado a
+   * mao - o que isto poupa e escrever o texto e lembrar do link.
+   */
+  const texto = `Found us in the Crypto World's Fair mosaic.
+
+`
+    + `Free tool by @${PERFIL} - drop your logo, it finds your tile and builds this:
+`
+    + PAGINA;
+  window.open(`https://x.com/intent/post?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+  estado.textContent = T("rascunhoAberto");
+};
+
+$("tocar").onclick = tocar;
+$("tela").onclick = () => document.fullscreenElement ? document.exitFullscreen() : palco.requestFullscreen?.();
+$("reabrir").onclick = () => $("escolha").classList.add("aberto");
+$("irManual").onclick = (e) => {
+  e.preventDefault();
+  const d = document.querySelector("details");
+  d.open = true;
+  d.scrollIntoView({ behavior: "smooth", block: "center" });
+  $("ml").focus();
+};
+$("exemplo").onclick = () => {
+  celula = { linha: 51, coluna: 39, nc: 55, nl: 55 };
+  nitido.src = "assets/exemplo.png"; nitido.className = "escuro";
+  $("t1").value = "ON-CHAIN TREASURY MONITORING";
+  $("t2").value = "A phone call when your treasury moves — and you are not watching.";
+  $("t3").value = "Tempo track · viligion.com";
+  estado.textContent = T("mostrandoExemplo");
+  logoAtual = null;
+  retribuir(false);
+  tocar();
+};
+$("usar").onclick = () => {
+  const l = parseInt($("ml").value, 10), c = parseInt($("mc").value, 10);
+  const nl = parseInt($("ml").placeholder, 10) || 55;
+  const nc = parseInt($("mc").placeholder, 10) || 55;
+  if (!Number.isInteger(l) || !Number.isInteger(c) || l < 0 || c < 0 || l >= nl || c >= nc){
+    estado.textContent = T("erroFaixa", { nl: nl-1, nc: nc-1 }); return;
+  }
+  celula = { linha: l, coluna: c, nc, nl };
+  estado.textContent = T("usando", { l, c });
+  retribuir(!!logoAtual);
+  tocar();
+};
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === "r" || e.key === "R") tocar();
+  if (e.key === "f" || e.key === "F") $("tela").click();
+});
+
+// espera as imagens, senao o primeiro segundo engasga
+Promise.all([...document.images].map(i =>
+  i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })
+)).then(() => { aplicarIdioma(); tocar(); });
+</script>
+</body>
+</html>

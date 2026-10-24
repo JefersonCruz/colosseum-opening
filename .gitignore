@@ -1,0 +1,14 @@
+# You supply these yourself - see the README.
+# Anchored to the root on purpose: demo/ has its own copies, which ARE
+# committed so the live demo works (see NOTICE for their licensing).
+/mosaico.jpg
+/mosaico.png
+/mosaico.jpeg
+/logo.png
+/logo.jpg
+/logo.svg
+
+# Produced by the scripts
+/abertura/
+/candidatas.png
+__pycache__/
