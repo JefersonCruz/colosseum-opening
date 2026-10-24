@@ -399,6 +399,7 @@
   <div class="acoes">
     <button id="tocar" data-t="play"></button>
     <button id="tela" data-t="tela"></button>
+    <button id="baixar" data-t="baixar"></button>
     <button id="reabrir" class="secundario" data-t="outra" disabled></button>
     <button id="exemplo" class="secundario" data-t="exemplo"></button>
     <button id="verParecidos" class="secundario" data-t="verParecidos" disabled></button>
@@ -761,6 +762,12 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "baixar": "⬇ Download video",
+    "gravando": "Recording… {s}s left. Leave this tab in front.",
+    "preparandoGrav": "Pick this tab in the dialog, then it records itself.",
+    "gravOk": "Saved. {f}, {mb} MB — attach it to your post.",
+    "gravCancel": "Recording cancelled.",
+    "gravSemSuporte": "Your browser cannot record. Use a screen recorder, capturing the square area only.",
     "verParecidos": "Find look-alikes",
     "parecidosTitulo": "Logos that look like yours",
     "parecidosNota": "Visual similarity at thumbnail size, nothing more — not a trademark opinion. A near-identical match usually means the same project is listed twice.",
@@ -823,6 +830,12 @@ const IDIOMAS = {
     "rodapeA": "Record the <b>square area</b>, not the whole screen — OBS or ScreenToGif do it; the Windows Game Bar does not. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "baixar": "⬇ 下载视频",
+    "gravando": "录制中… 还剩 {s} 秒。请保持此标签页在前台。",
+    "preparandoGrav": "在弹窗中选择此标签页，然后它会自动录制。",
+    "gravOk": "已保存。{f}，{mb} MB — 把它附到你的帖子里。",
+    "gravCancel": "已取消录制。",
+    "gravSemSuporte": "你的浏览器无法录制。请使用录屏工具，只录制方形区域。",
     "verParecidos": "查找相似 Logo",
     "parecidosTitulo": "与你相似的 Logo",
     "parecidosNota": "仅为缩略图尺寸下的视觉相似度，不构成商标判断。几乎完全相同通常意味着同一个项目被列了两次。",
@@ -885,6 +898,12 @@ const IDIOMAS = {
     "rodapeA": "请录制<b>正方形区域</b>，而不是整个屏幕 — OBS 或 ScreenToGif 可以做到，Windows 游戏栏不行。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "baixar": "⬇ 動画をダウンロード",
+    "gravando": "録画中… 残り {s} 秒。このタブを前面に保ってください。",
+    "preparandoGrav": "ダイアログでこのタブを選ぶと、自動で録画します。",
+    "gravOk": "保存しました。{f}、{mb} MB — 投稿に添付してください。",
+    "gravCancel": "録画をキャンセルしました。",
+    "gravSemSuporte": "このブラウザでは録画できません。画面録画ソフトで正方形の範囲だけを録ってください。",
     "verParecidos": "似たロゴを探す",
     "parecidosTitulo": "あなたに似たロゴ",
     "parecidosNota": "サムネイルサイズでの視覚的な類似度にすぎず、商標の判断ではありません。ほぼ同一の場合、同じプロジェクトが二重に掲載されていることが多いです。",
@@ -1357,6 +1376,117 @@ $("rascunho").onclick = () => {
 
 $("tocar").onclick = tocar;
 $("tela").onclick = () => document.fullscreenElement ? document.exitFullscreen() : palco.requestFullscreen?.();
+
+/* ===================================================================
+   GRAVAR O VIDEO
+
+   Eu tinha afirmado que isto exigiria reescrever a animacao em canvas e que
+   so sairia WebM, que o X costuma recusar. Conferido no Chrome atual: errado
+   nos dois pontos. `MediaRecorder` aceita video/mp4;codecs=avc1, e
+   `getDisplayMedia` entrega a aba sem precisar de reescrita nenhuma.
+
+   O caminho e: capturar a aba -> desenhar so o retangulo do palco num canvas
+   quadrado -> gravar esse canvas. Assim a saida sai 1:1 de verdade, sem as
+   tarjas pretas que uma captura de tela cheia deixaria, e sem a barra de
+   controles aparecer.
+
+   O recorte e recalculado a cada quadro de proposito: se a pessoa rolar a
+   pagina no meio da gravacao, o palco se move, e um retangulo fixo passaria
+   a gravar o lugar errado.
+   =================================================================== */
+const FORMATOS = [
+  ["video/mp4;codecs=avc1", "mp4"],
+  ["video/mp4", "mp4"],
+  ["video/webm;codecs=vp9", "webm"],
+  ["video/webm", "webm"],
+];
+
+function formatoDisponivel(){
+  if (typeof MediaRecorder === "undefined") return null;
+  for (const [mime, ext] of FORMATOS) if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
+  return null;
+}
+
+function podeGravar(){
+  return !!(navigator.mediaDevices?.getDisplayMedia && formatoDisponivel() &&
+            HTMLCanvasElement.prototype.captureStream);
+}
+
+async function gravar(){
+  const fmt = formatoDisponivel();
+  estado.textContent = T("preparandoGrav");
+
+  let fonte;
+  try {
+    fonte = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30 },
+      audio: false,
+      preferCurrentTab: true,        // so o Chrome entende; os outros ignoram
+    });
+  } catch {
+    estado.textContent = T("gravCancel");   // a pessoa fechou o seletor
+    return;
+  }
+
+  const video = document.createElement("video");
+  video.srcObject = fonte;
+  video.muted = true;
+  await video.play();
+
+  const LADO = 1080;
+  const tela = document.createElement("canvas");
+  tela.width = tela.height = LADO;
+  const g = tela.getContext("2d");
+  const escala = video.videoWidth / window.innerWidth;
+
+  let rodando = true;
+  const desenhar = () => {
+    if (!rodando) return;
+    const r = palco.getBoundingClientRect();   // recalculado: a pagina pode rolar
+    g.drawImage(video, r.x * escala, r.y * escala, r.width * escala, r.height * escala,
+                0, 0, LADO, LADO);
+    requestAnimationFrame(desenhar);
+  };
+  desenhar();
+
+  const pedacos = [];
+  const rec = new MediaRecorder(tela.captureStream(30), {
+    mimeType: fmt.mime,
+    videoBitsPerSecond: 8_000_000,
+  });
+  rec.ondataavailable = (e) => { if (e.data.size) pedacos.push(e.data); };
+
+  const pronto = new Promise((r) => (rec.onstop = r));
+  rec.start();
+  tocar();                                   // reinicia do zero pra gravar inteiro
+
+  const ritmo = parseFloat(getComputedStyle(palco).getPropertyValue("--r")) || 1;
+  const total = Math.ceil(18.4 * ritmo);
+  for (let s = total; s > 0; s--) {
+    estado.textContent = T("gravando", { s });
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  rec.stop();
+  rodando = false;
+  fonte.getTracks().forEach((t) => t.stop());
+  await pronto;
+
+  const blob = new Blob(pedacos, { type: fmt.mime });
+  const nome = `colosseum-opening.${fmt.ext}`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) });
+}
+
+$("baixar").onclick = () => {
+  if (!podeGravar()) { estado.textContent = T("gravSemSuporte"); return; }
+  gravar();
+};
+if (!podeGravar()) $("baixar").disabled = true;
 $("verParecidos").onclick = async () => {
   estado.textContent = T("procurandoParecidos");
   await new Promise((r) => setTimeout(r, 30));   // deixa a interface pintar

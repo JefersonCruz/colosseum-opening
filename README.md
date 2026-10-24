@@ -46,13 +46,20 @@ python gerar.py --linha 51 --coluna 39 --logo my-logo.png --mosaico mosaico.jpg 
 
 ---
 
-## Recording it
+## Getting the video
 
-The stage is square. On a 16:9 monitor, fullscreen leaves black bars at the sides — so **record the square area, not the whole screen**. OBS or ScreenToGif will do it; the Windows Game Bar will not, it captures the whole window.
+**Click "Download video".** The page captures itself, crops to the square stage and hands you a file. Chrome produces **MP4 (H.264), 1080×1080** — verified by parsing the container, not assumed. About 5.6 MB for the full 18 seconds, which X takes without complaint.
+
+You will be asked to pick a tab to share: pick this one. Then leave it in front until the countdown ends — a background tab stops producing frames.
+
+Two caveats worth knowing:
+
+- The output is a **fragmented MP4**, which is what `MediaRecorder` emits. X re-encodes on upload and handles it, but if you plan to use the file somewhere stricter, test one upload first.
+- `getDisplayMedia` is desktop-only in practice. On a phone the button disables itself and tells you to use a screen recorder instead.
+
+If your browser cannot record, the fallback is unchanged: record the **square area** yourself, not the whole screen. OBS or ScreenToGif do it; the Windows Game Bar does not.
 
 Runs about 18 seconds. X autoplays muted and loops, and the clip opens and closes on black, so it loops cleanly.
-
-There is no download button, on purpose. Exporting video from the browser would mean rebuilding the animation on canvas, and `MediaRecorder` only emits WebM — which X frequently rejects and Safari handles badly. A screen recording is less work and a better file.
 
 ---
 
