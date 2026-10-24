@@ -279,6 +279,27 @@
   .btX:hover{background:#e3e9ee}
   .btX svg{width:.95em; height:.95em; fill:currentColor}
 
+  #parecidos{display:none; background:rgba(12,18,26,.96); border:1px solid rgba(86,120,160,.25);
+    border-radius:10px; padding:14px;}
+  #parecidos.aberto{display:block}
+  #parecidos h2{font-size:.95rem; font-weight:400; color:#e3eff9; margin-bottom:4px}
+  #parecidos p{font-size:.78rem; color:var(--fraco); margin-bottom:10px; line-height:1.45}
+  #listaParecidos{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px}
+  #listaParecidos figure{border-radius:8px; overflow:hidden; background:#000; border:1px solid rgba(86,120,160,.2)}
+  #listaParecidos img{width:100%; display:block}
+  #listaParecidos figcaption{font-size:.6rem; text-align:center; padding:3px 2px; color:var(--fraco)}
+  #listaParecidos .ident{color:#ffd27a}
+
+  #voltar{
+    display:none; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+    border:1px solid rgba(var(--ac1),.35); border-radius:10px; padding:10px 14px;
+    background:linear-gradient(180deg,rgba(var(--ac1),.10),rgba(var(--ac1),.03));
+  }
+  #voltar.aberto{display:flex}
+  #voltar p{font-size:.84rem; color:var(--texto)}
+  #voltar p small{display:block; color:var(--fraco); font-size:.74rem; margin-top:2px}
+  #nota{font-size:.78rem; color:var(--fraco); line-height:1.45; margin-top:8px}
+
   #escolhaMosaico{display:flex; flex-wrap:wrap; justify-content:center;
     border:1px solid rgba(86,120,160,.25); border-radius:10px; padding:9px 14px; background:rgba(12,18,26,.6);}
   .dica{font-size:.74rem; color:var(--fraco); font-style:italic;}
@@ -344,6 +365,12 @@
 </div>
 
 <div id="painel">
+  <div id="voltar">
+    <p><span data-t="voltou"></span><small data-t="salvoAqui"></small></p>
+    <button id="usarSalvo" data-t="usarSalvo"></button>
+    <button id="esquecer" class="secundario" data-t="esquecer"></button>
+  </div>
+
   <div class="grupo" id="escolhaMosaico">
     <span class="rot" data-t="mosaico"></span>
     <div class="opcoes" id="mosaicos">
@@ -365,6 +392,7 @@
     <h2 data-t="qual"></h2>
     <p><span data-t="qualSub"></span><br>
       <b data-t="naoAqui"></b> <span data-t="naoAquiMeio"></span> <a href="#" id="irManual" data-t="naoAquiLink"></a>.</p>
+    <p id="nota" data-t="duplicados"></p>
     <div id="grade"></div>
   </div>
 
@@ -373,6 +401,7 @@
     <button id="tela" data-t="tela"></button>
     <button id="reabrir" class="secundario" data-t="outra" disabled></button>
     <button id="exemplo" class="secundario" data-t="exemplo"></button>
+    <button id="verParecidos" class="secundario" data-t="verParecidos" disabled></button>
   </div>
 
   <div id="depois">
@@ -387,6 +416,12 @@
       </a>
       <button id="rascunho" class="secundario" data-t="rascunho"></button>
     </div>
+  </div>
+
+  <div id="parecidos">
+    <h2 data-t="parecidosTitulo"></h2>
+    <p data-t="parecidosNota"></p>
+    <div id="listaParecidos"></div>
   </div>
 
   <div id="efeitos">
@@ -425,8 +460,8 @@
       <div><label for="t2" data-t="rotLinha"></label><input id="t2" placeholder="One sentence that earns the click."></div>
       <div><label for="t3" data-t="rotRodape"></label><input id="t3" placeholder="Your track · yoursite.com"></div>
       <div class="manual">
-        <div><label for="ml" data-t="rotLin"></label><input id="ml" type="number" min="0" placeholder="51"></div>
-        <div><label for="mc" data-t="rotCol"></label><input id="mc" type="number" min="0" placeholder="39"></div>
+        <div><label for="ml" data-t="rotLin"></label><input id="ml" type="number" min="0" placeholder="0–54"></div>
+        <div><label for="mc" data-t="rotCol"></label><input id="mc" type="number" min="0" placeholder="0–54"></div>
         <button id="usar" class="secundario" data-t="usar"></button>
       </div>
     </div>
@@ -681,9 +716,13 @@ function produto(a, b){
   return s / a.length;
 }
 
+/** Amostras do mosaico em uso, reaproveitadas por `acharParecidos`. */
+let amostras = null;
+
 function procurar(img, nc, nl, logo, quantos){
   const dC = amostrar(img, nc, nl, 32), largC = nc*32;
   const dR = amostrar(img, nc, nl, 16), largR = nc*16;
+  amostras = { nc, nl, dC, dR };
   const gabs = gabaritos(logo);
 
   const achados = [];
@@ -722,6 +761,20 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "verParecidos": "Find look-alikes",
+    "parecidosTitulo": "Logos that look like yours",
+    "parecidosNota": "Visual similarity at thumbnail size, nothing more — not a trademark opinion. A near-identical match usually means the same project is listed twice.",
+    "parecidosNada": "Nothing above the similarity threshold. Your mark stands alone in this mosaic.",
+    "procurandoParecidos": "Comparing against every tile…",
+    "selIdentico": "identical",
+    "selMuito": "very similar",
+    "selParecido": "similar",
+    "voltou": "You picked row {l}, column {c} last time.",
+    "usarSalvo": "Use it",
+    "esquecer": "Forget",
+    "salvoAqui": "Saved on this device only — it was never uploaded.",
+    "duplicados": "Some projects appear more than once in the mosaic. If two of these look like yours, both are yours — pick either.",
+    "restaurado": "Restored row {l}, column {c}.",
     "nome": "EN",
     "sub": "Drop your logo. It finds your tile among the ~3,000 in the Crypto World’s Fair mosaic and builds your opening — then you record the square and post it.",
     "mosaico": "Mosaic",
@@ -770,6 +823,20 @@ const IDIOMAS = {
     "rodapeA": "Record the <b>square area</b>, not the whole screen — OBS or ScreenToGif do it; the Windows Game Bar does not. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "verParecidos": "查找相似 Logo",
+    "parecidosTitulo": "与你相似的 Logo",
+    "parecidosNota": "仅为缩略图尺寸下的视觉相似度，不构成商标判断。几乎完全相同通常意味着同一个项目被列了两次。",
+    "parecidosNada": "没有超过相似度阈值的结果。你的标识在这张马赛克中是独一无二的。",
+    "procurandoParecidos": "正在与每个方块比较…",
+    "selIdentico": "完全相同",
+    "selMuito": "非常相似",
+    "selParecido": "相似",
+    "voltou": "上次你选择了第 {l} 行、第 {c} 列。",
+    "usarSalvo": "使用它",
+    "esquecer": "忘记",
+    "salvoAqui": "仅保存在本机 — 从未上传。",
+    "duplicados": "有些项目在马赛克中出现不止一次。如果其中两个看起来都是你的，那它们都是 — 任选一个即可。",
+    "restaurado": "已恢复第 {l} 行、第 {c} 列。",
     "nome": "中文",
     "sub": "拖入你的 Logo。它会在 Crypto World’s Fair 马赛克的约 3000 个方块中找到你，并生成开场动画 — 然后你录制方形区域并发布。",
     "mosaico": "马赛克",
@@ -818,6 +885,20 @@ const IDIOMAS = {
     "rodapeA": "请录制<b>正方形区域</b>，而不是整个屏幕 — OBS 或 ScreenToGif 可以做到，Windows 游戏栏不行。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "verParecidos": "似たロゴを探す",
+    "parecidosTitulo": "あなたに似たロゴ",
+    "parecidosNota": "サムネイルサイズでの視覚的な類似度にすぎず、商標の判断ではありません。ほぼ同一の場合、同じプロジェクトが二重に掲載されていることが多いです。",
+    "parecidosNada": "しきい値を超えるものはありません。このモザイクではあなたのマークは独自です。",
+    "procurandoParecidos": "すべてのタイルと比較しています…",
+    "selIdentico": "同一",
+    "selMuito": "とても似ている",
+    "selParecido": "似ている",
+    "voltou": "前回は {l} 行、{c} 列を選びました。",
+    "usarSalvo": "これを使う",
+    "esquecer": "忘れる",
+    "salvoAqui": "この端末にのみ保存 — アップロードはされていません。",
+    "duplicados": "一部のプロジェクトはモザイク内に複数回登場します。二つとも自分のものに見える場合、どちらも正解です。",
+    "restaurado": "{l} 行、{c} 列を復元しました。",
     "nome": "日本語",
     "sub": "ロゴをドロップしてください。Crypto World’s Fair のモザイク（約3,000枚）からあなたのタイルを見つけ、オープニングを生成します — あとは正方形の範囲を録画して投稿するだけです。",
     "mosaico": "モザイク",
@@ -963,6 +1044,8 @@ function mostrarCandidatas(lista, nc, nl){
       $("reabrir").disabled = false;
       estado.textContent = T("usando", { l: cand.l, c: cand.c });
       retribuir(!!logoAtual);
+      confirmar("miniatura");
+      $("verParecidos").disabled = false;
       tocar();
     };
     grade.appendChild(fig);
@@ -1015,8 +1098,9 @@ async function buscar(img){
   const lista = procurar(mosaico, grade.nc, grade.nl, img, 12);
   const ms = Math.round(performance.now() - t0);
 
-  $("mc").placeholder = String(grade.nc);
-  $("ml").placeholder = String(grade.nl);
+  gradeAtual = { nc: grade.nc, nl: grade.nl };
+  $("mc").placeholder = "0–" + (grade.nc - 1);
+  $("ml").placeholder = "0–" + (grade.nl - 1);
   // O palco e 1:1 e o mosaico e esticado pra preenche-lo. Se a imagem nao for
   // quadrada isso deforma, e e melhor dizer do que deixar a pessoa estranhar.
   const razao = mosaico.naturalWidth / mosaico.naturalHeight;
@@ -1065,6 +1149,153 @@ function escolher(container, atributo, aplicar){
  */
 let mosaicoAtual = "assets/mosaico.jpg";
 
+/*
+ * Tamanho da grade do mosaico em uso.
+ *
+ * Isto existe porque a versao anterior lia a faixa valida DOS PLACEHOLDERS
+ * dos campos de linha/coluna - que comecam com "51" e "39", o exemplo. Antes
+ * de qualquer busca, digitar a mao recusava tudo acima de 0-50 / 0-38, ou
+ * seja, recusava ate a celula do proprio exemplo. Placeholder e dica visual,
+ * nao estado.
+ */
+let gradeAtual = { nc: 55, nl: 55 };
+
+/* ===================================================================
+   LEMBRAR A CELULA
+
+   Um usuario relatou ter encontrado o logo dele DUAS VEZES, em lugares
+   diferentes. Conferido: o mosaico tem mesmo entradas repetidas - 84 pares
+   de celulas quase identicas, varios deles lado a lado. Ou seja, a
+   ferramenta estava certa e a duvida era legitima.
+
+   Entao a pagina passa a guardar qual celula a pessoa confirmou, no proprio
+   aparelho, pra ela nao precisar decidir de novo a cada visita.
+
+   Fica em localStorage, que e por navegador e nunca sai dele - nada aqui
+   contradiz o "nada e enviado" que a pagina promete. Toda leitura e escrita
+   vai em try/catch: em aba anonima, com dados bloqueados ou cota cheia, o
+   acesso lanca, e a pagina tem que continuar funcionando sem isso.
+   =================================================================== */
+const CHAVE = "colosseum-opening/celula";
+const LIMITE_LOGO = 2_000_000;   // acima disso a cota costuma estourar
+
+function guardar(dados){
+  try { localStorage.setItem(CHAVE, JSON.stringify(dados)); }
+  catch { /* cota cheia ou armazenamento bloqueado: seguir sem lembrar */ }
+}
+function recuperar(){
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (!bruto) return null;
+    const d = JSON.parse(bruto);
+    return (d && Number.isInteger(d.linha) && Number.isInteger(d.coluna)) ? d : null;
+  } catch { return null; }
+}
+function esquecer(){
+  try { localStorage.removeItem(CHAVE); } catch { /* idem */ }
+  $("voltar").classList.remove("aberto");
+}
+
+/** Chamado toda vez que a pessoa CONFIRMA uma celula - clicando ou digitando. */
+function confirmar(origem){
+  const d = { ...celula, mosaico: mosaicoAtual, quando: Date.now() };
+  const src = nitido.getAttribute("src") || "";
+  if (src.startsWith("data:") && src.length < LIMITE_LOGO) { d.logo = src; d.classe = nitido.className; }
+  d.origem = origem;
+  guardar(d);
+}
+
+async function restaurar(d){
+  if (d.mosaico && d.mosaico !== mosaicoAtual) {
+    mosaicoAtual = d.mosaico;
+    [...$("mosaicos").querySelectorAll("button")].forEach(b => b.classList.toggle("sel", b.dataset.m === d.mosaico));
+    mostrarCarregando(true);
+    await carregarMosaico(mosaicoAtual, preencher);
+    mostrarCarregando(false);
+  }
+  celula = { linha: d.linha, coluna: d.coluna, nc: d.nc || 55, nl: d.nl || 55 };
+  gradeAtual = { nc: celula.nc, nl: celula.nl };
+  if (d.logo) { nitido.src = d.logo; nitido.className = d.classe || "escuro"; retribuir(true); }
+  $("voltar").classList.remove("aberto");
+  estado.textContent = T("restaurado", { l: celula.linha, c: celula.coluna });
+  tocar();
+}
+
+/* ===================================================================
+   LOGOS PARECIDOS
+
+   Compara a SUA celula com todas as outras do mosaico - nao o arquivo que
+   voce enviou, mas a celula que voce confirmou, que e a forma como o mosaico
+   de fato te renderizou.
+
+   Serve a duas coisas. Primeiro, explica o relato de "achou o meu duas
+   vezes": medido, este mosaico tem 84 pares de celulas quase identicas, e
+   varios sao projetos listados em duplicidade. Segundo, mostra quem escolheu
+   uma identidade visual parecida com a sua, que e informacao util pra quem
+   esta posicionando um produto.
+
+   O que isto NAO e: parecer sobre marca. E semelhanca visual a 32x32, e o
+   texto na tela diz isso.
+   =================================================================== */
+const LIMIAR_PARECIDO = 0.80;
+
+async function acharParecidos(quantos = 12){
+  const { nc, nl } = gradeAtual;
+  if (!amostras || amostras.nc !== nc || amostras.nl !== nl) {
+    amostras = { nc, nl, dC: amostrar(mosaico, nc, nl, 32), dR: amostrar(mosaico, nc, nl, 16) };
+  }
+  const { dC, dR } = amostras;
+  const alvoC = normalizar(blocoCinza(dC, nc*32, celula.coluna, celula.linha, 32));
+  const alvoR = normalizar(blocoCor(dR, nc*16, celula.coluna, celula.linha, 16));
+
+  const achados = [];
+  for (let l = 0; l < nl; l++)
+    for (let c = 0; c < nc; c++){
+      if (l === celula.linha && c === celula.coluna) continue;
+      const s = produto(alvoC, normalizar(blocoCinza(dC, nc*32, c, l, 32))) * 0.5
+              + produto(alvoR, normalizar(blocoCor(dR, nc*16, c, l, 16))) * 0.5;
+      if (s >= LIMIAR_PARECIDO) achados.push({ s, l, c });
+    }
+  achados.sort((a, b) => b.s - a.s);
+  return achados.slice(0, quantos);
+}
+
+function mostrarParecidos(lista){
+  const caixa = $("listaParecidos");
+  caixa.innerHTML = "";
+  if (!lista.length) {
+    caixa.innerHTML = `<p style="grid-column:1/-1">${T("parecidosNada")}</p>`;
+  } else {
+    const { nc, nl } = gradeAtual;
+    const px = mosaico.naturalWidth / nc, py = mosaico.naturalHeight / nl;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(px); cv.height = Math.round(py);
+    const g = cv.getContext("2d");
+    for (const p of lista){
+      g.clearRect(0, 0, cv.width, cv.height);
+      g.drawImage(mosaico, Math.round(p.c*px), Math.round(p.l*py), cv.width, cv.height, 0, 0, cv.width, cv.height);
+      const rotulo = p.s >= 0.93 ? T("selIdentico") : p.s >= 0.85 ? T("selMuito") : T("selParecido");
+      const fig = document.createElement("figure");
+      const im = document.createElement("img"); im.src = cv.toDataURL();
+      const cap = document.createElement("figcaption");
+      cap.textContent = `${Math.round(p.s*100)}% · ${rotulo} · ${p.l},${p.c}`;
+      if (p.s >= 0.93) cap.className = "ident";
+      fig.append(im, cap);
+      caixa.appendChild(fig);
+    }
+  }
+  $("parecidos").classList.add("aberto");
+}
+
+function ofereceVoltar(){
+  const d = recuperar();
+  if (!d) return;
+  $("voltar").querySelector("[data-t=voltou]").textContent = T("voltou", { l: d.linha, c: d.coluna });
+  $("voltar").classList.add("aberto");
+  $("usarSalvo").onclick = () => restaurar(d);
+  $("esquecer").onclick = esquecer;
+}
+
 document.getElementById("idiomas").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-i]");
   if (!b || b.dataset.i === idioma) return;
@@ -1088,6 +1319,7 @@ $("mosaicos").addEventListener("click", async (e) => {
   $("reabrir").disabled = true;
   retribuir(false);
   celula = { linha: 0, coluna: 0, nc: 55, nl: 55 };
+  gradeAtual = { nc: 55, nl: 55 };   // so a busca descobre a grade real
 
   if (logoAtual) {
     await buscar(logoAtual);          // ja tem logotipo: procura de novo aqui
@@ -1125,6 +1357,15 @@ $("rascunho").onclick = () => {
 
 $("tocar").onclick = tocar;
 $("tela").onclick = () => document.fullscreenElement ? document.exitFullscreen() : palco.requestFullscreen?.();
+$("verParecidos").onclick = async () => {
+  estado.textContent = T("procurandoParecidos");
+  await new Promise((r) => setTimeout(r, 30));   // deixa a interface pintar
+  const t0 = performance.now();
+  const lista = await acharParecidos(12);
+  mostrarParecidos(lista);
+  estado.textContent = `${lista.length} · ${T("buscouEm", { ms: Math.round(performance.now() - t0) })}`;
+};
+
 $("reabrir").onclick = () => $("escolha").classList.add("aberto");
 $("irManual").onclick = (e) => {
   e.preventDefault();
@@ -1146,14 +1387,15 @@ $("exemplo").onclick = () => {
 };
 $("usar").onclick = () => {
   const l = parseInt($("ml").value, 10), c = parseInt($("mc").value, 10);
-  const nl = parseInt($("ml").placeholder, 10) || 55;
-  const nc = parseInt($("mc").placeholder, 10) || 55;
+  const { nc, nl } = gradeAtual;
   if (!Number.isInteger(l) || !Number.isInteger(c) || l < 0 || c < 0 || l >= nl || c >= nc){
     estado.textContent = T("erroFaixa", { nl: nl-1, nc: nc-1 }); return;
   }
   celula = { linha: l, coluna: c, nc, nl };
   estado.textContent = T("usando", { l, c });
   retribuir(!!logoAtual);
+  confirmar("manual");
+  $("verParecidos").disabled = false;
   tocar();
 };
 document.addEventListener("keydown", (e) => {
@@ -1217,6 +1459,7 @@ function mostrarCarregando(mostrar){
   ));
   mostrarCarregando(false);
   $("previa").classList.add("pronto");
+  ofereceVoltar();
   tocar();
 })();
 </script>
