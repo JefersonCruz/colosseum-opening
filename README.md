@@ -58,31 +58,29 @@ There is no download button, on purpose. Exporting video from the browser would 
 
 ## How reliable is the search
 
-Measured, not asserted — and it depends almost entirely on one thing: **whether your logo file is framed the way Colosseum framed it in the mosaic.**
+Measured, not asserted — and it depends almost entirely on one thing: **whether your logo file is framed the way the mosaic frames it.**
 
-Method: take 60 real tiles, turn each into a plausible logo file (upscaled, JPEG re-encoded, exposure shifted), then crop its edges by a given amount to simulate a different framing, and search the whole mosaic for it.
-
-Measured on the 2048px build; the shipped mosaic is now 3072px, where the same search scores slightly better.
+Method: take 100 real tiles, turn each into a plausible logo file (upscaled, JPEG re-encoded, exposure shifted), then crop its edges by a given amount to simulate different framing, and search all 3,025 cells for it. Run against the 3072px mosaic this page actually ships.
 
 | Your file vs the tile | Ranked #1 | Among the 12 shown |
 |---|---|---|
-| Same framing | 98% | **100%** |
-| 10% tighter | 63% | 78% |
-| 18% tighter | 45% | 58% |
-| 25% tighter | 22% | 43% |
+| Same framing | **99%** | **100%** |
+| 6% tighter | 75% | 81% |
+| 10% tighter | 73% | 80% |
+| 18% tighter | 53% | 66% |
+| 25% tighter | 20% | 39% |
 
-Read that honestly: if you have the file you submitted, it is close to certain. If your file is cropped tight and the mosaic has padding around it (or the reverse), **it can fail** — and at the extreme it fails most of the time.
+Read it honestly: if you have the file you submitted, it is close to certain. If your file is cropped noticeably tighter than the mosaic version (or the reverse), **it can fail** — and at the extreme it fails more often than it works.
 
-That is why **you pick from thumbnails and there is a manual row/column box**. The manual path is not a rare edge case; with badly framed art it is roughly one in four.
+That is why **you pick from thumbnails and there is a manual row/column box**. At 25% framing difference, six in ten people need that box. It is not an edge case.
 
-Two notes on the numbers:
+Resolution matters more than it looks. The same test on a 2048px mosaic scored 63% at 10% framing difference and 45% at 18%; at 3072px those are 73% and 53%.
 
-- They are *optimistic*, because the query is derived from the mosaic itself. They measure loss from compression and framing, not the gap between your original artwork and whatever rendering Colosseum used. If you submitted a wordmark and the mosaic shows your icon, no amount of this helps.
-- The one fully independent data point is the VILIGION tile, searched using its original PNG which never passed through the mosaic: **rank 1, score 0.880 against 0.742** for the runner-up, on the 3072px mosaic. Resolution helps the margin: at 2560px the same search gives 0.879 against 0.778.
-- Run inside Chrome rather than Python, the same search returns the same cell with slightly different numbers — **0.824 against 0.724** — because canvas downsampling is not PIL's. The ranking is what matters, and it agrees. A full search takes about 1 second for 3,025 cells.
-- Searching the @solana_sailor mosaic for the same logo tops out at 0.638 with the candidates bunched together, which is what "not in this one" looks like.
+Three notes on the numbers:
 
-Showing 24 candidates instead of 12 was measured too, and barely moved anything (78%→78%, 43%→45%), so the list stays at 12.
+- They are *optimistic*, because the query is derived from the mosaic itself. They measure loss from compression and framing, not the gap between your original artwork and whatever rendering the organisers used. If you submitted a wordmark and the mosaic shows your icon, no amount of this helps.
+- The one fully independent data point is the VILIGION tile, searched with its original PNG which never passed through the mosaic: **rank 1, score 0.880 against 0.742** for the runner-up. Run inside Chrome instead of Python the same search gives 0.824 against 0.724 — canvas downsampling is not PIL's, but the ranking agrees.
+- Searching the second mosaic for that same logo tops out at 0.638 with the candidates bunched together, which is what "not in this one" looks like.
 
 ---
 
