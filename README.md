@@ -6,7 +6,9 @@ Drop your logo. It finds your tile among the ~3,000 in the Crypto World's Fair m
 
 Nothing is uploaded. The search runs in your browser.
 
-Interface in **English, 中文 and 日本語** — picked from your browser language, switchable at the top. The end-card text stays whatever you type.
+Interface in **English, Português, Русский, 中文 and 日本語** — picked from your browser language, switchable at the top. The end-card text stays whatever you type, in any script.
+
+The language list follows the event's own registration numbers rather than guesswork: Brazil was the largest group by a wide margin, and Russian covers Kazakhstan and Ukraine together. The first three scripts of the top ten — Latin, Devanagari and Cyrillic — were checked on the end card for letter-spacing and uppercase damage; none broke.
 
 ---
 
