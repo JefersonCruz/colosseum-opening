@@ -434,6 +434,7 @@
     <button id="tocar" data-t="play"></button>
     <button id="tela" data-t="tela"></button>
     <button id="baixar" data-t="baixar"></button>
+    <button id="baixarImagem" data-t="baixarImagem"></button>
     <button id="compartilhar" data-t="compartilhar" hidden></button>
     <button id="reabrir" class="secundario" data-t="outra" disabled></button>
     <button id="exemplo" class="secundario" data-t="exemplo"></button>
@@ -794,7 +795,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261025-76c27bf";
+const VERSAO = "20261025-9c2c004";
 
 /* ===================================================================
    IDIOMAS
@@ -808,6 +809,9 @@ const VERSAO = "20261025-76c27bf";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "baixarImagem": "⬇ Download image",
+    "imagemOk": "Saved {f} — a square image, ready to post.",
+    "semVideoAqui": "Phones can't record video: no browser on Android or iOS gives a page access to the screen. Use <b>Download image</b> here, or open this on a computer for the video.",
     "avisoWebm": "Heads-up: your browser only records WebM, which X often rejects. Chrome or Edge produce MP4.",
     "compartilhar": "Share video",
     "compartilhando": "Opening your device's share sheet — pick X, or any app you have.",
@@ -883,6 +887,9 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "pt": {
+    "baixarImagem": "⬇ Baixar imagem",
+    "imagemOk": "Salvei {f} — uma imagem quadrada, pronta para publicar.",
+    "semVideoAqui": "Celular não grava vídeo: nenhum navegador de Android ou iOS dá à página acesso à tela. Use <b>Baixar imagem</b> aqui, ou abra no computador para o vídeo.",
     "nome": "PT",
     "sub": "Solte o seu logotipo. Ele acha o seu quadrado entre os ~3.000 do mosaico da Crypto World's Fair e monta a sua abertura — depois você grava o quadrado e publica.",
     "mosaico": "Mosaico",
@@ -958,6 +965,9 @@ const IDIOMAS = {
     "semCompartilhar": "Este navegador não compartilha arquivos. O vídeo está nos downloads — anexe à mão."
   },
   "ru": {
+    "baixarImagem": "⬇ Скачать картинку",
+    "imagemOk": "Сохранено {f} — квадратная картинка, готова к публикации.",
+    "semVideoAqui": "Телефон не записывает видео: ни один браузер на Android или iOS не даёт странице доступ к экрану. Используйте <b>Скачать картинку</b>, либо откройте это на компьютере ради видео.",
     "nome": "RU",
     "sub": "Перетащите свой логотип. Он найдёт вашу ячейку среди ~3000 в мозаике Crypto World's Fair и соберёт заставку — дальше вы записываете квадрат и публикуете.",
     "mosaico": "Мозаика",
@@ -1033,6 +1043,9 @@ const IDIOMAS = {
     "semCompartilhar": "Этот браузер не умеет делиться файлами. Видео в загрузках — прикрепите вручную."
   },
   "zh": {
+    "baixarImagem": "⬇ 下载图片",
+    "imagemOk": "已保存 {f} — 一张方形图片，可直接发布。",
+    "semVideoAqui": "手机无法录制视频：Android 和 iOS 的浏览器都不允许网页访问屏幕。请使用<b>下载图片</b>，或在电脑上打开以获取视频。",
     "avisoWebm": "注意：你的浏览器只能录制 WebM，X 经常拒绝该格式。Chrome 或 Edge 可生成 MP4。",
     "compartilhar": "分享视频",
     "compartilhando": "正在打开系统分享面板 — 选择 X 或任意已安装的应用。",
@@ -1108,6 +1121,9 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "baixarImagem": "⬇ 画像をダウンロード",
+    "imagemOk": "{f} を保存しました — 正方形の画像、そのまま投稿できます。",
+    "semVideoAqui": "スマートフォンでは動画を録画できません。Android も iOS も、ページに画面へのアクセスを許可しないためです。<b>画像をダウンロード</b>をお使いいただくか、動画はパソコンで開いてください。",
     "avisoWebm": "ご注意：このブラウザは WebM でしか録画できず、X はしばしば拒否します。Chrome か Edge なら MP4 になります。",
     "compartilhar": "動画を共有",
     "compartilhando": "端末の共有シートを開きます — X でも、お使いの任意のアプリでも。",
@@ -1876,10 +1892,97 @@ $("compartilhar").onclick = async () => {
 };
 
 $("baixar").onclick = () => {
-  if (!podeGravar()) { estado.textContent = T("gravSemSuporte"); return; }
+  /*
+   * NAO desabilitado quando nao da pra gravar.
+   *
+   * Antes ele ficava `disabled`, e botao desabilitado nao recebe toque - a
+   * explicacao que existia nunca aparecia. No Android o usuario via um botao
+   * apagado e nenhum motivo. Agora ele responde dizendo por que, e aponta a
+   * saida que funciona ali.
+   */
+  if (!podeGravar()) { estadoHTML(T("semVideoAqui")); return; }
   gravar();
 };
-if (!podeGravar()) $("baixar").disabled = true;
+if (!podeGravar()) {
+  $("baixar").style.opacity = ".55";
+  estadoHTML(T("semVideoAqui"));
+}
+
+/* ===================================================================
+   IMAGEM, PRA QUEM NAO PODE GRAVAR
+
+   Celular e a origem da maioria de quem chega por um post, e nenhum
+   navegador de Android ou iOS expoe captura de tela - entao video ali e
+   impossivel, nao e defeito. Sem alternativa, essas pessoas achavam a
+   propria celula, viam a animacao e saiam de maos vazias.
+
+   Esta imagem nao reimplementa o cartao final: e o momento da descoberta -
+   a vizinhanca do mosaico com a celula marcada - desenhado direto no canvas
+   a partir da imagem que a pagina ja tem. Sem captura de tela, funciona em
+   qualquer aparelho.
+   =================================================================== */
+async function baixarImagem(){
+  const LADO = 1080;
+  const { nc, nl } = gradeAtual;
+  const px = mosaico.naturalWidth / nc, py = mosaico.naturalHeight / nl;
+
+  const c = document.createElement("canvas");
+  c.width = c.height = LADO;
+  const g = c.getContext("2d");
+  g.fillStyle = "#000"; g.fillRect(0, 0, LADO, LADO);
+
+  // uma vizinhanca de ~9 celulas, centrada na sua
+  const janela = 9;
+  const cx = (celula.coluna + 0.5) * px, cy = (celula.linha + 0.5) * py;
+  const meia = janela * px / 2;
+  g.drawImage(mosaico, cx - meia, cy - meia, janela * px, janela * py, 0, 0, LADO, LADO);
+
+  // escurece em volta, pra celula saltar
+  const r = g.createRadialGradient(LADO/2, LADO/2, LADO*0.07, LADO/2, LADO/2, LADO*0.62);
+  r.addColorStop(0, "rgba(0,0,0,0)");
+  r.addColorStop(0.35, "rgba(0,0,0,.55)");
+  r.addColorStop(1, "rgba(0,0,0,.88)");
+  g.fillStyle = r; g.fillRect(0, 0, LADO, LADO);
+
+  // o anel na sua celula
+  const lado = LADO / janela;
+  const x0 = (LADO - lado) / 2;
+  g.strokeStyle = "rgba(56,189,248,.95)";
+  g.lineWidth = Math.max(3, lado * 0.035);
+  g.shadowColor = "rgba(56,189,248,.8)"; g.shadowBlur = lado * 0.3;
+  const raio = lado * 0.12;
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x0, x0, lado, lado, raio); else g.rect(x0, x0, lado, lado);
+  g.stroke();
+  g.shadowBlur = 0;
+
+  // credito
+  g.fillStyle = "rgba(190,210,230,.9)";
+  g.font = `300 ${Math.round(LADO*0.028)}px Jost, system-ui, sans-serif`;
+  g.textAlign = "center";
+  g.fillText(`made with @${PERFIL}  ·  viligion.com`, LADO/2, LADO - Math.round(LADO*0.045));
+
+  const blob = await new Promise((r2) => c.toBlob(r2, "image/png"));
+  const nome = "colosseum-opening.png";
+  const arquivo = new File([blob], nome, { type: "image/png" });
+
+  if (podeCompartilhar(arquivo)) {
+    try {
+      await navigator.share({ files: [arquivo],
+        text: `Found us in the Crypto World's Fair mosaic. Made with @${PERFIL}'s free tool: ${PAGINA}` });
+      estado.textContent = T("imagemOk", { f: nome });
+      return;
+    } catch { /* fechou a folha; cai no download */ }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  estado.textContent = T("imagemOk", { f: nome });
+}
+
+$("baixarImagem").onclick = baixarImagem;
 $("verParecidos").onclick = async () => {
   estado.textContent = T("procurandoParecidos");
   await new Promise((r) => setTimeout(r, 30));   // deixa a interface pintar
