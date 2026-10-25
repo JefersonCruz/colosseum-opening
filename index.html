@@ -140,8 +140,15 @@
   #rodape{top:90%; font-size:2.2em; font-weight:400; letter-spacing:.2em; text-indent:.2em;
     color:#8fb0cc; text-transform:uppercase; text-shadow:0 2px 1em rgba(0,0,0,.85);}
   /* crédito discreto: pequeno, no canto, e removível porque isto é MIT */
-  #credito{position:absolute; right:2.5%; bottom:2.2%; font-size:1.05em; font-weight:200;
-    letter-spacing:.14em; color:#44566b; opacity:0;}
+  /*
+   * Estava em 1.05em - cerca de 4px quando o X exibe o video num celular, ou
+   * seja, invisivel. Passou pelo mesmo descuido do resto do cartao.
+   * Traz o PERFIL e o dominio: no X o arroba e o que a pessoa procura; fora
+   * dele, o dominio e o que serve.
+   */
+  #credito{position:absolute; left:50%; transform:translateX(-50%); bottom:2.6%;
+    font-size:2.1em; font-weight:300; letter-spacing:.12em; text-indent:.12em;
+    color:#7792ad; text-shadow:0 2px 1em rgba(0,0,0,.9); opacity:0; white-space:nowrap;}
 
   /* A vinheta serve ao cartao FINAL. Ligada desde o primeiro quadro ela
      apagava as bordas do plano de abertura - medido: centro em 98% do
@@ -384,7 +391,7 @@
   <div class="linha" id="titulo"></div>
   <div class="linha" id="frase"></div>
   <div class="linha" id="rodape"></div>
-  <div id="credito">made with viligion.com</div>
+  <div id="credito">made with @Viligion &nbsp;·&nbsp; viligion.com</div>
   <div class="vinheta"></div>
   <div id="cortina"></div>
 </div>
@@ -1098,6 +1105,7 @@ function textos(){
   encolherPraCaber($("frase"), 2.9, 1.6);
   encolherPraCaber($("rodape"), 2.2, 1.3);
   encolherPraCaber($("chapeu"), 2.6, 1.5);
+  encolherPraCaber($("credito"), 2.1, 1.2);
 }
 
 /**
