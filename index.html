@@ -762,6 +762,8 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "escolhaAba": "In the dialog, choose <b>This tab</b> — not a window or the whole screen.",
+    "abaErrada": "You shared a window or the whole screen, so the crop cannot be exact. Try again and pick <b>This tab</b>.",
     "baixar": "⬇ Download video",
     "gravando": "Recording… {s}s left. Leave this tab in front.",
     "preparandoGrav": "Pick this tab in the dialog, then it records itself.",
@@ -830,9 +832,11 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "escolhaAba": "在弹窗中请选择<b>此标签页</b>，不要选窗口或整个屏幕。",
+    "abaErrada": "你共享的是窗口或整个屏幕，无法精确裁剪。请重试并选择<b>此标签页</b>。",
     "baixar": "⬇ 下载视频",
     "gravando": "录制中… 还剩 {s} 秒。请保持此标签页在前台。",
-    "preparandoGrav": "在弹窗中选择此标签页，然后它会自动录制。",
+    "preparandoGrav": "Pick this tab in the dialog, then it records itself.",
     "gravOk": "已保存。{f}，{mb} MB — 把它附到你的帖子里。",
     "gravCancel": "已取消录制。",
     "gravSemSuporte": "你的浏览器无法录制。请使用录屏工具，只录制方形区域。",
@@ -898,9 +902,11 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "escolhaAba": "ダイアログでは<b>このタブ</b>を選んでください。ウィンドウや画面全体ではありません。",
+    "abaErrada": "ウィンドウまたは画面全体が共有されたため、正確に切り抜けません。もう一度<b>このタブ</b>を選んでください。",
     "baixar": "⬇ 動画をダウンロード",
     "gravando": "録画中… 残り {s} 秒。このタブを前面に保ってください。",
-    "preparandoGrav": "ダイアログでこのタブを選ぶと、自動で録画します。",
+    "preparandoGrav": "Pick this tab in the dialog, then it records itself.",
     "gravOk": "保存しました。{f}、{mb} MB — 投稿に添付してください。",
     "gravCancel": "録画をキャンセルしました。",
     "gravSemSuporte": "このブラウザでは録画できません。画面録画ソフトで正方形の範囲だけを録ってください。",
@@ -1414,40 +1420,76 @@ function podeGravar(){
 
 async function gravar(){
   const fmt = formatoDisponivel();
-  estado.textContent = T("preparandoGrav");
+  estadoHTML(T("escolhaAba"));
 
   let fonte;
   try {
     fonte = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 30 },
+      video: { displaySurface: "browser", frameRate: 30 },
       audio: false,
-      preferCurrentTab: true,        // so o Chrome entende; os outros ignoram
+      preferCurrentTab: true,
+      selfBrowserSurface: "include",
+      surfaceSwitching: "exclude",
     });
   } catch {
-    estado.textContent = T("gravCancel");   // a pessoa fechou o seletor
+    estado.textContent = T("gravCancel");
+    return;
+  }
+
+  const trilha = fonte.getVideoTracks()[0];
+
+  /*
+   * O RECORTE E FEITO PELO NAVEGADOR, nao por conta nossa.
+   *
+   * A primeira versao capturava a aba e calculava onde o palco estava dentro
+   * do quadro, usando getBoundingClientRect e a razao entre videoWidth e
+   * innerWidth. Isso so vale se a pessoa compartilhar EXATAMENTE a aba - e o
+   * seletor deixa escolher janela ou tela inteira, caso em que a conta aponta
+   * pro lugar errado e o video sai cortado pela metade. Foi o que aconteceu.
+   *
+   * `cropTo` resolve na origem: o proprio Chrome entrega a trilha ja recortada
+   * no elemento, sem coordenada nenhuma do nosso lado. Nao ha o que errar.
+   */
+  const temRecorte = typeof CropTarget !== "undefined" &&
+                     typeof trilha.cropTo === "function";
+  if (temRecorte) {
+    try { await trilha.cropTo(await CropTarget.fromElement(palco)); }
+    catch { /* segue sem recorte; a checagem abaixo ainda protege */ }
+  }
+
+  // Se nao foi a aba que veio, o recorte nao acontece e o quadro sai errado.
+  // Melhor parar e dizer do que entregar um arquivo quebrado.
+  const superficie = trilha.getSettings().displaySurface;
+  if (!temRecorte && superficie !== "browser") {
+    trilha.stop();
+    estadoHTML(T("abaErrada"));
     return;
   }
 
   const video = document.createElement("video");
   video.srcObject = fonte;
   video.muted = true;
-  await video.play();
+  await new Promise((r) => { video.onloadedmetadata = r; video.play().catch(r); });
 
   const LADO = 1080;
   const tela = document.createElement("canvas");
   tela.width = tela.height = LADO;
   const g = tela.getContext("2d");
-  const escala = video.videoWidth / window.innerWidth;
 
+  /*
+   * Desenha a cada QUADRO DE VIDEO (requestVideoFrameCallback), nao a cada
+   * quadro de tela. requestAnimationFrame e estrangulado quando a aba perde o
+   * foco - e a pessoa perde o foco justamente ao escolher a aba no seletor,
+   * o que congelava ou rasgava a imagem.
+   */
   let rodando = true;
-  const desenhar = () => {
+  const porQuadro = () => {
     if (!rodando) return;
-    const r = palco.getBoundingClientRect();   // recalculado: a pagina pode rolar
-    g.drawImage(video, r.x * escala, r.y * escala, r.width * escala, r.height * escala,
-                0, 0, LADO, LADO);
-    requestAnimationFrame(desenhar);
+    g.drawImage(video, 0, 0, LADO, LADO);   // a trilha JA e so o palco
+    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(porQuadro);
+    else requestAnimationFrame(porQuadro);
   };
-  desenhar();
+  porQuadro();
 
   const pedacos = [];
   const rec = new MediaRecorder(tela.captureStream(30), {
@@ -1458,7 +1500,7 @@ async function gravar(){
 
   const pronto = new Promise((r) => (rec.onstop = r));
   rec.start();
-  tocar();                                   // reinicia do zero pra gravar inteiro
+  tocar();
 
   const ritmo = parseFloat(getComputedStyle(palco).getPropertyValue("--r")) || 1;
   const total = Math.ceil(18.4 * ritmo);
@@ -1469,7 +1511,7 @@ async function gravar(){
 
   rec.stop();
   rodando = false;
-  fonte.getTracks().forEach((t) => t.stop());
+  fonte.getTracks().forEach((x) => x.stop());
   await pronto;
 
   const blob = new Blob(pedacos, { type: fmt.mime });
@@ -1570,6 +1612,8 @@ async function carregarMosaico(url, aoProgredir){
 }
 
 const caixaCarregando = $("carregando");
+/** Algumas mensagens tem <b>; textContent as mostraria com as tags a vista. */
+const estadoHTML = (html) => { estado.innerHTML = html; };
 const preencher = (f) => { $("barra").firstElementChild.style.width = Math.round(f * 100) + "%"; };
 
 function mostrarCarregando(mostrar){
