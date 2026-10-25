@@ -1030,6 +1030,19 @@ const $ = (id) => document.getElementById(id);
 const palco = $("palco"), nitido = $("nitido"), mosaico = $("mosaico"), estado = $("estado");
 let celula = { linha: 51, coluna: 39, nc: 55, nl: 55 };   // o exemplo
 let logoAtual = null;                                 // Image do usuario
+
+/*
+ * O botao de exemplo preenche os campos de texto com a mensagem do VILIGION.
+ * Sem limpar isso, quem clicasse no exemplo por curiosidade e depois subisse
+ * o proprio logotipo levaria um video com a marca dele e o TEXTO nosso - ou
+ * seja, publicaria a nossa mensagem como se fosse dele.
+ *
+ * A marca so e limpa se a pessoa nao tiver digitado nada por cima.
+ */
+let textoDoExemplo = false;
+for (const campo of ["t1", "t2", "t3"]) {
+  $(campo).addEventListener("input", () => { textoDoExemplo = false; });
+}
 let proprio = false;                                  // o video na tela e o dele?
 
 /** So pede retribuicao depois de entregar: o bloco aparece quando a pessoa
@@ -1152,6 +1165,11 @@ async function usarLogo(arquivo){
   const img = new Image();
   await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = url; });
 
+  if (textoDoExemplo) {
+    $("t1").value = ""; $("t2").value = ""; $("t3").value = "";
+    textoDoExemplo = false;
+    textos();   // aplica na hora, senao o palco segue mostrando o texto antigo
+  }
   logoAtual = img;
   nitido.src = url;
   ajustarFundo(img);
@@ -1654,6 +1672,7 @@ $("exemplo").onclick = () => {
   $("t1").value = "ON-CHAIN TREASURY MONITORING";
   $("t2").value = "A phone call when your treasury moves — and you are not watching.";
   $("t3").value = "Tempo track · viligion.com";
+  textoDoExemplo = true;
   estado.textContent = T("mostrandoExemplo");
   logoAtual = null;
   retribuir(false);
