@@ -425,6 +425,7 @@
     <button id="tocar" data-t="play"></button>
     <button id="tela" data-t="tela"></button>
     <button id="baixar" data-t="baixar"></button>
+    <button id="compartilhar" data-t="compartilhar" hidden></button>
     <button id="reabrir" class="secundario" data-t="outra" disabled></button>
     <button id="exemplo" class="secundario" data-t="exemplo"></button>
     <button id="verParecidos" class="secundario" data-t="verParecidos" disabled></button>
@@ -787,6 +788,9 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "compartilhar": "Share video",
+    "compartilhando": "Opening your device's share sheet — pick X, or any app you have.",
+    "semCompartilhar": "Your browser cannot share files. The video is in your downloads — attach it manually.",
     "gravFalhou": "Could not crop the recording to the square ({d}). Pick <b>This tab</b> in the dialog — a window or the whole screen cannot be cropped.",
     "escolhaAba": "In the dialog, choose <b>This tab</b> — not a window or the whole screen.",
     "abaErrada": "You shared a window or the whole screen, so the crop cannot be exact. Try again and pick <b>This tab</b>.",
@@ -858,6 +862,9 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "compartilhar": "分享视频",
+    "compartilhando": "正在打开系统分享面板 — 选择 X 或任意已安装的应用。",
+    "semCompartilhar": "你的浏览器无法分享文件。视频已在下载文件夹 — 请手动附加。",
     "gravFalhou": "无法将录制裁剪为正方形（{d}）。请在弹窗中选择<b>此标签页</b> — 窗口或整个屏幕无法裁剪。",
     "escolhaAba": "在弹窗中请选择<b>此标签页</b>，不要选窗口或整个屏幕。",
     "abaErrada": "你共享的是窗口或整个屏幕，无法精确裁剪。请重试并选择<b>此标签页</b>。",
@@ -929,6 +936,9 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "compartilhar": "動画を共有",
+    "compartilhando": "端末の共有シートを開きます — X でも、お使いの任意のアプリでも。",
+    "semCompartilhar": "このブラウザはファイルを共有できません。動画はダウンロード先にあります — 手動で添付してください。",
     "gravFalhou": "録画を正方形に切り抜けませんでした（{d}）。ダイアログで<b>このタブ</b>を選んでください — ウィンドウや画面全体は切り抜けません。",
     "escolhaAba": "ダイアログでは<b>このタブ</b>を選んでください。ウィンドウや画面全体ではありません。",
     "abaErrada": "ウィンドウまたは画面全体が共有されたため、正確に切り抜けません。もう一度<b>このタブ</b>を選んでください。",
@@ -1635,6 +1645,11 @@ async function gravar(){
 
   const blob = new Blob(pedacos, { type: fmt.mime });
   const nome = `colosseum-opening.${fmt.ext}`;
+
+  // guarda pro botao de compartilhar, que so aparece se o aparelho aceitar
+  const arquivo = new File([blob], nome, { type: fmt.mime });
+  videoGravado = { arquivo, nome };
+  $("compartilhar").hidden = !podeCompartilhar(arquivo);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = nome;
@@ -1643,6 +1658,42 @@ async function gravar(){
   estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) })
     + (recortado ? "" : "  [crop: manual]");
 }
+
+/* ===================================================================
+   COMPARTILHAR
+
+   Postar direto no X a partir daqui nao da: exigiria app registrado, OAuth e
+   um backend pra guardar o segredo - uma pagina estatica nao tem onde
+   esconder credencial - alem de plano pago da API pra enviar midia.
+
+   O que da, e e melhor, e entregar o arquivo pro proprio aparelho decidir:
+   `navigator.share` abre a folha de compartilhamento do sistema, e a pessoa
+   escolhe X, Telegram, WhatsApp ou o que tiver instalado. Sem chave, sem
+   servidor, sem depender de uma rede especifica.
+
+   Conferido neste Chrome: canShare aceita video/mp4. Onde nao aceitar, o
+   botao nem aparece e o download continua sendo o caminho.
+   =================================================================== */
+let videoGravado = null;   // { arquivo, nome }
+
+function podeCompartilhar(arquivo){
+  return !!(navigator.canShare && navigator.share && navigator.canShare({ files: [arquivo] }));
+}
+
+$("compartilhar").onclick = async () => {
+  if (!videoGravado) return;
+  if (!podeCompartilhar(videoGravado.arquivo)) {
+    estado.textContent = T("semCompartilhar");
+    return;
+  }
+  estado.textContent = T("compartilhando");
+  try {
+    await navigator.share({
+      files: [videoGravado.arquivo],
+      text: `Found us in the Crypto World's Fair mosaic.\n\nMade with @${PERFIL}'s free tool: ${PAGINA}`,
+    });
+  } catch { /* a pessoa fechou a folha; nada a fazer */ }
+};
 
 $("baixar").onclick = () => {
   if (!podeGravar()) { estado.textContent = T("gravSemSuporte"); return; }
