@@ -31,7 +31,16 @@
   #palco{
     position:relative; overflow:hidden; background:#000; flex:none;
     width:min(100%, 78vh); aspect-ratio:1/1;
-    font-size:calc(min(100%, 78vh) / 100);
+    /*
+     * 1em = 1% da largura do palco, ajustado por JS em `escalarPalco`.
+     *
+     * Aqui estava `calc(min(100%, 78vh) / 100)`, copiado da linha de cima.
+     * Em `width`, 100% e a largura do pai; em `font-size`, 100% e o TAMANHO
+     * DA FONTE do pai. O calculo virava min(16px, 78vh)/100 = 0,16px, e como
+     * todo o cartao final e medido em em, o texto ficava invisivel.
+     * O valor abaixo e so um padrao ate o JS medir.
+     */
+    font-size:calc(min(100vw, 78vh) / 100);
     border-radius:10px;
   }
   /* no fullscreen o palco ocupa a tela e nada mais aparece */
@@ -109,11 +118,27 @@
   #nitido.claro{border-radius:4%; background:#fff; padding:1.2%;}
 
   .linha{position:absolute; left:50%; transform:translateX(-50%); text-align:center; opacity:0; white-space:nowrap;}
-  #chapeu{top:7%; font-size:2em; font-weight:300; letter-spacing:.36em; text-indent:.36em; color:#9fb4c9; text-transform:uppercase;}
-  #regua{top:66%; width:0; height:1px; background:linear-gradient(90deg,transparent,rgba(var(--ac1),.8),transparent);}
-  #titulo{top:70%; font-size:2.5em; font-weight:300; letter-spacing:.4em; text-indent:.4em; color:#dce7f5;}
-  #frase{top:78%; font-size:1.7em; font-weight:200; letter-spacing:.1em; text-indent:.1em; color:#8296ad;}
-  #rodape{top:90%; font-size:1.5em; font-weight:300; letter-spacing:.3em; text-indent:.3em; color:#55687f; text-transform:uppercase;}
+  #chapeu{top:7%; font-size:2.6em; font-weight:300; letter-spacing:.36em; text-indent:.36em; color:#9fb4c9; text-transform:uppercase;}
+  /*
+   * Tamanhos pensados pro destino, nao pra esta tela.
+   *
+   * 1em = 1% do palco. O video sai em 1080, e o X exibe num celular com uns
+   * 400px de largura - uma reducao de quase 3x. A frase estava em 1.7em, ou
+   * seja 18px no arquivo e ~7px na timeline: ilegivel. Os tamanhos abaixo
+   * miram ~14px na timeline, que e onde da pra ler sem esforco.
+   *
+   * Sao os valores MAXIMOS: `encolherPraCaber` reduz quando o texto e longo,
+   * entao titulo comprido diminui em vez de estourar o quadro.
+   */
+  #regua{top:63%; width:0; height:2px; border-radius:2px;
+    background:linear-gradient(90deg,transparent,rgb(var(--ac1)),transparent);
+    box-shadow:0 0 1.2em rgba(var(--ac1),.55);}
+  #titulo{top:67%; font-size:4.6em; font-weight:300; letter-spacing:.16em; text-indent:.16em;
+    color:#eef6ff; text-shadow:0 0 .7em rgba(var(--ac1),.3), 0 2px 1.2em rgba(0,0,0,.85);}
+  #frase{top:76%; font-size:2.9em; font-weight:200; letter-spacing:.05em; text-indent:.05em;
+    color:#aec4da; text-shadow:0 2px 1em rgba(0,0,0,.85);}
+  #rodape{top:90%; font-size:2.2em; font-weight:400; letter-spacing:.2em; text-indent:.2em;
+    color:#8fb0cc; text-transform:uppercase; text-shadow:0 2px 1em rgba(0,0,0,.85);}
   /* crédito discreto: pequeno, no canto, e removível porque isto é MIT */
   #credito{position:absolute; right:2.5%; bottom:2.2%; font-size:1.05em; font-weight:200;
     letter-spacing:.14em; color:#44566b; opacity:0;}
@@ -1017,14 +1042,51 @@ function aplicar(){
   estiloDin.textContent = montarKeyframes(celula.linha, celula.coluna, celula.nc, celula.nl);
 }
 
+/**
+ * Reduz a fonte ate o texto caber em 88% do palco.
+ *
+ * Sem isto, um titulo longo estouraria a largura (as linhas sao nowrap, pra
+ * nao quebrar em duas e colidir com a linha de baixo). Assim o tamanho
+ * generoso vale pro caso normal e so diminui quando precisa.
+ */
+function encolherPraCaber(el, maxEm, minEm){
+  el.style.fontSize = maxEm + "em";
+  if (!el.textContent.trim()) return;
+  const limite = palco.clientWidth * 0.88;
+  let tam = maxEm;
+  while (el.scrollWidth > limite && tam > minEm) {
+    tam -= 0.15;
+    el.style.fontSize = tam.toFixed(2) + "em";
+  }
+}
+
 function textos(){
   const por = (el, v) => { el.innerHTML = v; el.style.display = v ? "" : "none"; };
   por($("titulo"), ($("t1").value || "").trim());
   por($("frase"),  ($("t2").value || "").trim());
   por($("rodape"), ($("t3").value || "").trim() || "Crypto World&rsquo;s Fair &nbsp;·&nbsp; Colosseum");
+  encolherPraCaber($("titulo"), 4.6, 2.4);
+  encolherPraCaber($("frase"), 2.9, 1.6);
+  encolherPraCaber($("rodape"), 2.2, 1.3);
+  encolherPraCaber($("chapeu"), 2.6, 1.5);
 }
 
+/**
+ * Fixa 1em = 1% da largura real do palco.
+ *
+ * Em CSS isso nao da pra expressar com seguranca: `%` em font-size se refere
+ * a fonte do pai, e `vw`/`vh` ignoram o padding da pagina e o modo tela
+ * cheia. Medir e exato nos tres casos.
+ */
+function escalarPalco(){
+  const l = palco.clientWidth;
+  if (l > 0) palco.style.fontSize = (l / 100) + "px";
+}
+addEventListener("resize", () => { escalarPalco(); textos(); });
+document.addEventListener("fullscreenchange", () => { escalarPalco(); textos(); });
+
 function tocar(){
+  escalarPalco();
   aplicar(); textos();
   palco.classList.remove("tocando");
   void palco.offsetWidth;              // forca o reinicio das animacoes
