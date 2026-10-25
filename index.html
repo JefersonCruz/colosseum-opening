@@ -1504,47 +1504,57 @@ async function gravar(){
   const trilha = fonte.getVideoTracks()[0];
   const superficie = trilha.getSettings().displaySurface;
 
-  /*
-   * O RECORTE E DO NAVEGADOR, e e VERIFICADO.
-   *
-   * A versao anterior calculava na mao onde o palco estava dentro da captura.
-   * Isso so vale se a pessoa compartilhar exatamente a aba, e o seletor deixa
-   * escolher janela ou tela inteira - dai o video saia cortado.
-   *
-   * Trocar por cropTo resolveu a conta, mas deixou outro buraco: se cropTo
-   * existisse e FALHASSE, o erro era engolido e o codigo seguia desenhando o
-   * quadro inteiro da aba dentro de um canvas quadrado. Resultado identico ao
-   * defeito original - imagem cortada e deformada.
-   *
-   * Agora ha verificacao em vez de esperanca: o palco e quadrado, entao uma
-   * trilha que nao chega quadrada denuncia que o recorte nao aconteceu.
-   */
-  let recortado = false;
   if (typeof CropTarget !== "undefined" && typeof trilha.cropTo === "function") {
-    try {
-      await trilha.cropTo(await CropTarget.fromElement(palco));
-      await new Promise((r) => setTimeout(r, 250));   // o recorte leva um quadro
-      const s = trilha.getSettings();
-      recortado = !!(s.width && s.height && Math.abs(s.width - s.height) <= 2);
-    } catch { recortado = false; }
-  }
-
-  /*
-   * Sem recorte do navegador, so da pra calcular a posicao se o que veio foi
-   * a aba - nela as coordenadas da pagina valem. Em janela ou tela inteira
-   * nao ha como saber onde a pagina esta, entao e melhor parar e dizer.
-   */
-  if (!recortado && superficie !== "browser") {
-    const s = trilha.getSettings();
-    trilha.stop();
-    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${s.width}x${s.height}` }));
-    return;
+    try { await trilha.cropTo(await CropTarget.fromElement(palco)); } catch { /* conferido abaixo */ }
   }
 
   const video = document.createElement("video");
   video.srcObject = fonte;
   video.muted = true;
   await new Promise((r) => { video.onloadedmetadata = r; video.play().catch(r); });
+
+  /*
+   * ESPERA O QUADRO ESTABILIZAR ANTES DE DECIDIR.
+   *
+   * `cropTo` resolve antes de o elemento <video> refletir o novo tamanho:
+   * `videoWidth` continua um tempo com a dimensao antiga. Medindo uma vez so,
+   * a decisao saia "nao recortou", o recorte manual entrava POR CIMA de um
+   * quadro que ja estava recortado, e o video virava um zoom numa regiao
+   * aleatoria do mosaico. Foi o defeito reportado.
+   *
+   * Entao aqui a pergunta e feita repetidamente ate a proporcao do quadro
+   * bater com a do palco (recortou) ou com a da janela (nao recortou).
+   */
+  const cxP = palco.getBoundingClientRect();
+  const aspPalco = cxP.width / cxP.height;
+  const aspJanela = window.innerWidth / window.innerHeight;
+
+  /*
+   * DECIDE PELA PROPORCAO MAIS PROXIMA, NAO POR UM LIMIAR.
+   *
+   * Medido num Chrome real: palco 532x532 (1,000), janela 1536x682 (2,252),
+   * e o quadro depois de um cropTo BEM SUCEDIDO vinha 1140x1080 - proporcao
+   * 1,056. Ou seja, o recorte funciona mas a saida nao sai exatamente
+   * quadrada. Com tolerancia de 0,05 isso reprovava por um fio (0,056), o
+   * recorte manual entrava por cima do quadro ja recortado, e o video virava
+   * um zoom numa regiao aleatoria.
+   *
+   * Comparar as duas distancias elimina o numero magico: 1,056 esta
+   * incomparavelmente mais perto de 1,000 do que de 2,252.
+   */
+  let asp = 0;
+  for (let i = 0; i < 20 && !asp; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    if (video.videoWidth && video.videoHeight) asp = video.videoWidth / video.videoHeight;
+  }
+  const dist = (x, y) => Math.abs(Math.log(x / y));
+  const recortado = asp > 0 && dist(asp, aspPalco) < dist(asp, aspJanela);
+
+  if (!recortado && superficie !== "browser") {
+    trilha.stop();
+    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${video.videoWidth}x${video.videoHeight}` }));
+    return;
+  }
 
   const LADO = 1080;
   const tela = document.createElement("canvas");
@@ -1561,7 +1571,15 @@ async function gravar(){
   const porQuadro = () => {
     if (!rodando) return;
     if (recortado) {
-      g.drawImage(video, 0, 0, LADO, LADO);          // a trilha JA e so o palco
+      /*
+       * A trilha ja e o palco, mas pode vir com sobra lateral (medido:
+       * 1140x1080 pra um palco quadrado). Esticar deformaria em ~5%, entao
+       * pega o maior retangulo central com a proporcao do palco.
+       */
+      const vw = video.videoWidth, vh = video.videoHeight;
+      let lw = vw, lh = vw / aspPalco;
+      if (lh > vh) { lh = vh; lw = vh * aspPalco; }
+      g.drawImage(video, (vw - lw) / 2, (vh - lh) / 2, lw, lh, 0, 0, LADO, LADO);
     } else {
       // Caminho de reserva: a aba inteira veio, entao recorta pela posicao.
       // Recalculado a cada quadro porque a pagina pode rolar.
