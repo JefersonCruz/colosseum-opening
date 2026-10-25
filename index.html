@@ -504,6 +504,7 @@
 
 <footer>
   <span data-th="rodapeA"></span><br>
+  <span id="versao" style="opacity:.55"></span><br>
   Code is MIT — <a href="https://github.com/JefersonCruz/colosseum-opening">source</a>. The mosaic is Colosseum&rsquo;s and carries ~3,000 other teams&rsquo; marks; it is here for this tool only, not relicensed. See NOTICE.<br>
   Built by <a href="https://github.com/JefersonCruz/VILIGION">VILIGION</a> while preparing our own submission —
   <a href="https://x.com/Viligion" target="_blank" rel="noopener">@Viligion</a> on X.
@@ -782,6 +783,16 @@ function procurar(img, nc, nl, logo, quantos){
 /* Um lugar so pra mudar, caso o endereco da pagina ou o perfil mudem. */
 const PAGINA = "https://jefersoncruz.github.io/colosseum-opening/";
 const PERFIL = "Viligion";
+
+/*
+ * Carimbo da versao publicada.
+ *
+ * Existe porque esta ferramenta foi corrigida varias vezes no mesmo dia e os
+ * relatos de defeito nunca diziam QUAL build estava rodando - navegador e CDN
+ * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
+ * sobre se o problema ainda existe ou se e cache.
+ */
+const VERSAO = "20261025-0c264cf";
 
 /* ===================================================================
    IDIOMAS
@@ -1536,7 +1547,7 @@ async function gravar(){
       surfaceSwitching: "exclude",
     });
   } catch {
-    estado.textContent = T("gravCancel");
+    estado.textContent = T("gravCancel") + "   [" + VERSAO + "]";
     return;
   }
 
@@ -1591,7 +1602,7 @@ async function gravar(){
 
   if (!recortado && superficie !== "browser") {
     trilha.stop();
-    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${video.videoWidth}x${video.videoHeight}` }));
+    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${video.videoWidth}x${video.videoHeight} [${VERSAO}]` }));
     return;
   }
 
@@ -1670,7 +1681,8 @@ async function gravar(){
     + (recortado ? "" : "  [crop: manual]")
     // Medido no Firefox 158: so WebM. Melhor dizer do que a pessoa descobrir
     // no momento de postar.
-    + (fmt.ext === "webm" ? "  " + T("avisoWebm") : "");
+    + (fmt.ext === "webm" ? "  " + T("avisoWebm") : "")
+    + "   [" + VERSAO + "]";
 }
 
 /* ===================================================================
@@ -1817,6 +1829,7 @@ function mostrarCarregando(mostrar){
   await Promise.all([...document.images].map(i =>
     i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; })
   ));
+  $("versao").textContent = "build " + VERSAO;
   mostrarCarregando(false);
   $("previa").classList.add("pronto");
   ofereceVoltar();
