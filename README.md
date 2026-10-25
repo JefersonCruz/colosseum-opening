@@ -69,6 +69,16 @@ Measured, not asserted — and it depends almost entirely on one thing: **whethe
 
 Method: take 100 real tiles, turn each into a plausible logo file (upscaled, JPEG re-encoded, exposure shifted), then crop its edges by a given amount to simulate different framing, and search all 3,025 cells for it. Run against the 3072px mosaic this page actually ships.
 
+**Reproduce it yourself** — a measurement nobody can repeat is just a claim with a number in it:
+
+```bash
+pip install pillow numpy
+python medir-acerto.py              # the table below
+python medir-acerto.py --amostras 300   # tighter, slower
+```
+
+The matching in that script mirrors `index.html` exactly: two background fills, five scales with weights, 32×32 grayscale plus 16×16 colour. Change one and the other stops being evidence about the shipped tool.
+
 | Your file vs the tile | Ranked #1 | Among the 12 shown |
 |---|---|---|
 | Same framing | **99%** | **100%** |
