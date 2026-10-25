@@ -787,6 +787,7 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "gravFalhou": "Could not crop the recording to the square ({d}). Pick <b>This tab</b> in the dialog — a window or the whole screen cannot be cropped.",
     "escolhaAba": "In the dialog, choose <b>This tab</b> — not a window or the whole screen.",
     "abaErrada": "You shared a window or the whole screen, so the crop cannot be exact. Try again and pick <b>This tab</b>.",
     "baixar": "⬇ Download video",
@@ -857,6 +858,7 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "gravFalhou": "无法将录制裁剪为正方形（{d}）。请在弹窗中选择<b>此标签页</b> — 窗口或整个屏幕无法裁剪。",
     "escolhaAba": "在弹窗中请选择<b>此标签页</b>，不要选窗口或整个屏幕。",
     "abaErrada": "你共享的是窗口或整个屏幕，无法精确裁剪。请重试并选择<b>此标签页</b>。",
     "baixar": "⬇ 下载视频",
@@ -927,6 +929,7 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "gravFalhou": "録画を正方形に切り抜けませんでした（{d}）。ダイアログで<b>このタブ</b>を選んでください — ウィンドウや画面全体は切り抜けません。",
     "escolhaAba": "ダイアログでは<b>このタブ</b>を選んでください。ウィンドウや画面全体ではありません。",
     "abaErrada": "ウィンドウまたは画面全体が共有されたため、正確に切り抜けません。もう一度<b>このタブ</b>を選んでください。",
     "baixar": "⬇ 動画をダウンロード",
@@ -1499,32 +1502,42 @@ async function gravar(){
   }
 
   const trilha = fonte.getVideoTracks()[0];
+  const superficie = trilha.getSettings().displaySurface;
 
   /*
-   * O RECORTE E FEITO PELO NAVEGADOR, nao por conta nossa.
+   * O RECORTE E DO NAVEGADOR, e e VERIFICADO.
    *
-   * A primeira versao capturava a aba e calculava onde o palco estava dentro
-   * do quadro, usando getBoundingClientRect e a razao entre videoWidth e
-   * innerWidth. Isso so vale se a pessoa compartilhar EXATAMENTE a aba - e o
-   * seletor deixa escolher janela ou tela inteira, caso em que a conta aponta
-   * pro lugar errado e o video sai cortado pela metade. Foi o que aconteceu.
+   * A versao anterior calculava na mao onde o palco estava dentro da captura.
+   * Isso so vale se a pessoa compartilhar exatamente a aba, e o seletor deixa
+   * escolher janela ou tela inteira - dai o video saia cortado.
    *
-   * `cropTo` resolve na origem: o proprio Chrome entrega a trilha ja recortada
-   * no elemento, sem coordenada nenhuma do nosso lado. Nao ha o que errar.
+   * Trocar por cropTo resolveu a conta, mas deixou outro buraco: se cropTo
+   * existisse e FALHASSE, o erro era engolido e o codigo seguia desenhando o
+   * quadro inteiro da aba dentro de um canvas quadrado. Resultado identico ao
+   * defeito original - imagem cortada e deformada.
+   *
+   * Agora ha verificacao em vez de esperanca: o palco e quadrado, entao uma
+   * trilha que nao chega quadrada denuncia que o recorte nao aconteceu.
    */
-  const temRecorte = typeof CropTarget !== "undefined" &&
-                     typeof trilha.cropTo === "function";
-  if (temRecorte) {
-    try { await trilha.cropTo(await CropTarget.fromElement(palco)); }
-    catch { /* segue sem recorte; a checagem abaixo ainda protege */ }
+  let recortado = false;
+  if (typeof CropTarget !== "undefined" && typeof trilha.cropTo === "function") {
+    try {
+      await trilha.cropTo(await CropTarget.fromElement(palco));
+      await new Promise((r) => setTimeout(r, 250));   // o recorte leva um quadro
+      const s = trilha.getSettings();
+      recortado = !!(s.width && s.height && Math.abs(s.width - s.height) <= 2);
+    } catch { recortado = false; }
   }
 
-  // Se nao foi a aba que veio, o recorte nao acontece e o quadro sai errado.
-  // Melhor parar e dizer do que entregar um arquivo quebrado.
-  const superficie = trilha.getSettings().displaySurface;
-  if (!temRecorte && superficie !== "browser") {
+  /*
+   * Sem recorte do navegador, so da pra calcular a posicao se o que veio foi
+   * a aba - nela as coordenadas da pagina valem. Em janela ou tela inteira
+   * nao ha como saber onde a pagina esta, entao e melhor parar e dizer.
+   */
+  if (!recortado && superficie !== "browser") {
+    const s = trilha.getSettings();
     trilha.stop();
-    estadoHTML(T("abaErrada"));
+    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${s.width}x${s.height}` }));
     return;
   }
 
@@ -1547,7 +1560,15 @@ async function gravar(){
   let rodando = true;
   const porQuadro = () => {
     if (!rodando) return;
-    g.drawImage(video, 0, 0, LADO, LADO);   // a trilha JA e so o palco
+    if (recortado) {
+      g.drawImage(video, 0, 0, LADO, LADO);          // a trilha JA e so o palco
+    } else {
+      // Caminho de reserva: a aba inteira veio, entao recorta pela posicao.
+      // Recalculado a cada quadro porque a pagina pode rolar.
+      const r = palco.getBoundingClientRect();
+      const k = video.videoWidth / window.innerWidth;
+      g.drawImage(video, r.x * k, r.y * k, r.width * k, r.height * k, 0, 0, LADO, LADO);
+    }
     if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(porQuadro);
     else requestAnimationFrame(porQuadro);
   };
@@ -1583,7 +1604,8 @@ async function gravar(){
   a.download = nome;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-  estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) });
+  estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) })
+    + (recortado ? "" : "  [crop: manual]");
 }
 
 $("baixar").onclick = () => {
