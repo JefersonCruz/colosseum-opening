@@ -788,6 +788,7 @@ const PERFIL = "Viligion";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "avisoWebm": "Heads-up: your browser only records WebM, which X often rejects. Chrome or Edge produce MP4.",
     "compartilhar": "Share video",
     "compartilhando": "Opening your device's share sheet — pick X, or any app you have.",
     "semCompartilhar": "Your browser cannot share files. The video is in your downloads — attach it manually.",
@@ -862,6 +863,7 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "zh": {
+    "avisoWebm": "注意：你的浏览器只能录制 WebM，X 经常拒绝该格式。Chrome 或 Edge 可生成 MP4。",
     "compartilhar": "分享视频",
     "compartilhando": "正在打开系统分享面板 — 选择 X 或任意已安装的应用。",
     "semCompartilhar": "你的浏览器无法分享文件。视频已在下载文件夹 — 请手动附加。",
@@ -936,6 +938,7 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "avisoWebm": "ご注意：このブラウザは WebM でしか録画できず、X はしばしば拒否します。Chrome か Edge なら MP4 になります。",
     "compartilhar": "動画を共有",
     "compartilhando": "端末の共有シートを開きます — X でも、お使いの任意のアプリでも。",
     "semCompartilhar": "このブラウザはファイルを共有できません。動画はダウンロード先にあります — 手動で添付してください。",
@@ -1656,7 +1659,10 @@ async function gravar(){
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) })
-    + (recortado ? "" : "  [crop: manual]");
+    + (recortado ? "" : "  [crop: manual]")
+    // Medido no Firefox 158: so WebM. Melhor dizer do que a pessoa descobrir
+    // no momento de postar.
+    + (fmt.ext === "webm" ? "  " + T("avisoWebm") : "");
 }
 
 /* ===================================================================
