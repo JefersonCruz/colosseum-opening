@@ -59,7 +59,11 @@ Two caveats worth knowing:
 - The output is a **fragmented MP4**, which is what `MediaRecorder` emits. X re-encodes on upload and handles it, but if you plan to use the file somewhere stricter, test one upload first.
 - `getDisplayMedia` is desktop-only in practice. On a phone the button disables itself and tells you to use a screen recorder instead.
 
-**On a phone there is no video, and there cannot be** — no browser on Android or iOS gives a page access to the screen. Those visitors get **Download image** instead: a 1080×1080 PNG of the mosaic around their tile, with it ringed. Drawn straight on a canvas, so it works on every device, and on mobile it goes to the share sheet directly.
+**Phones record too now.** The animation is drawn on a canvas by the page itself, so recording never asks the browser for the screen — which is what made it impossible on Android and iOS before, and what produced three rounds of cropping bugs on desktop.
+
+One honest caveat: the preview on screen is CSS, the file is canvas. They follow the same timings and geometry, but they are two renderers, and small differences are possible. The file is the one that was verified frame by frame.
+
+~~**On a phone there is no video, and there cannot be**~~ — no browser on Android or iOS gives a page access to the screen. Those visitors get **Download image** instead: a 1080×1080 PNG of the mosaic around their tile, with it ringed. Drawn straight on a canvas, so it works on every device, and on mobile it goes to the share sheet directly.
 
 If your desktop browser cannot record either, record the **square area** yourself, not the whole screen. OBS or ScreenToGif do it; the Windows Game Bar does not.
 

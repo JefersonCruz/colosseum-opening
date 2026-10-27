@@ -795,7 +795,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261025-9c2c004";
+const VERSAO = "20261027-af9ae62";
 
 /* ===================================================================
    IDIOMAS
@@ -809,6 +809,8 @@ const VERSAO = "20261025-9c2c004";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "gravandoC": "Rendering… {p}%",
+    "podeGravarAgora": "Works on phones too — no screen capture involved.",
     "baixarImagem": "⬇ Download image",
     "imagemOk": "Saved {f} — a square image, ready to post.",
     "semVideoAqui": "Phones can't record video: no browser on Android or iOS gives a page access to the screen. Use <b>Download image</b> here, or open this on a computer for the video.",
@@ -887,6 +889,8 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "pt": {
+    "gravandoC": "Renderizando… {p}%",
+    "podeGravarAgora": "Funciona no celular também — não usa captura de tela.",
     "baixarImagem": "⬇ Baixar imagem",
     "imagemOk": "Salvei {f} — uma imagem quadrada, pronta para publicar.",
     "semVideoAqui": "Celular não grava vídeo: nenhum navegador de Android ou iOS dá à página acesso à tela. Use <b>Baixar imagem</b> aqui, ou abra no computador para o vídeo.",
@@ -965,6 +969,8 @@ const IDIOMAS = {
     "semCompartilhar": "Este navegador não compartilha arquivos. O vídeo está nos downloads — anexe à mão."
   },
   "ru": {
+    "gravandoC": "Рендеринг… {p}%",
+    "podeGravarAgora": "Работает и на телефоне — захват экрана не используется.",
     "baixarImagem": "⬇ Скачать картинку",
     "imagemOk": "Сохранено {f} — квадратная картинка, готова к публикации.",
     "semVideoAqui": "Телефон не записывает видео: ни один браузер на Android или iOS не даёт странице доступ к экрану. Используйте <b>Скачать картинку</b>, либо откройте это на компьютере ради видео.",
@@ -1043,6 +1049,8 @@ const IDIOMAS = {
     "semCompartilhar": "Этот браузер не умеет делиться файлами. Видео в загрузках — прикрепите вручную."
   },
   "zh": {
+    "gravandoC": "正在渲染… {p}%",
+    "podeGravarAgora": "手机上也能用 — 不需要屏幕录制。",
     "baixarImagem": "⬇ 下载图片",
     "imagemOk": "已保存 {f} — 一张方形图片，可直接发布。",
     "semVideoAqui": "手机无法录制视频：Android 和 iOS 的浏览器都不允许网页访问屏幕。请使用<b>下载图片</b>，或在电脑上打开以获取视频。",
@@ -1121,6 +1129,8 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "gravandoC": "描画中… {p}%",
+    "podeGravarAgora": "スマートフォンでも動作します — 画面キャプチャは使いません。",
     "baixarImagem": "⬇ 画像をダウンロード",
     "imagemOk": "{f} を保存しました — 正方形の画像、そのまま投稿できます。",
     "semVideoAqui": "スマートフォンでは動画を録画できません。Android も iOS も、ページに画面へのアクセスを許可しないためです。<b>画像をダウンロード</b>をお使いいただくか、動画はパソコンで開いてください。",
@@ -1698,198 +1708,378 @@ function formatoDisponivel(){
   return null;
 }
 
+/* Nao exige mais getDisplayMedia: a animacao e desenhada aqui. Com isso o
+   celular, que nunca teve captura de tela, passa a poder gravar. */
 function podeGravar(){
-  return !!(navigator.mediaDevices?.getDisplayMedia && formatoDisponivel() &&
-            HTMLCanvasElement.prototype.captureStream);
+  return !!(formatoDisponivel() && HTMLCanvasElement.prototype.captureStream &&
+            typeof MediaRecorder !== "undefined");
 }
+
+/* ===================================================================
+   DESENHO NO CANVAS
+
+   Por que isto existe, depois de a gravacao por captura de tela ter sido
+   corrigida tres vezes e seguir falhando na maquina do usuario:
+
+   capturar a aba traz variaveis que a pagina nao controla - qual superficie
+   a pessoa compartilhou, se o recorte do navegador pegou, se getSettings
+   reportou a verdade (nao reportava), se a aba perdeu o foco e o compositor
+   parou de produzir quadros. Cada correcao minha fechava uma e abria outra.
+
+   O canvas elimina todas de uma vez: a pagina desenha cada quadro, entao
+   nada depende de permissao, de foco, nem de o navegador cooperar.
+
+   E ha um ganho que eu nao tinha visto: MediaRecorder existe no Android.
+   Com a animacao no canvas, o celular - de onde vem a maioria de quem clica
+   num post - passa a gravar video de verdade, nao so a imagem estatica.
+
+   A referencia continua sendo o CSS: mesmos tempos, mesmas curvas, mesma
+   geometria de camera. Se os dois divergirem, o CSS e quem esta certo.
+   =================================================================== */
+
+/** cubic-bezier do CSS: acha y para um x, por bisseccao. */
+function bez(p1x, p1y, p2x, p2y){
+  return (x) => {
+    let lo = 0, hi = 1, t2 = x;
+    for (let i = 0; i < 24; i++){
+      t2 = (lo + hi) / 2;
+      const u = 1 - t2;
+      const bx = 3*u*u*t2*p1x + 3*u*t2*t2*p2x + t2*t2*t2;
+      if (bx < x) lo = t2; else hi = t2;
+    }
+    const u = 1 - t2;
+    return 3*u*u*t2*p1y + 3*u*t2*t2*p2y + t2*t2*t2;
+  };
+}
+const EASE = {
+  linear: (x) => x,
+  entra: bez(.42, 0, 1, 1),            // ease-in
+  sai: bez(0, 0, .58, 1),              // ease-out
+  entraSai: bez(.42, 0, .58, 1),       // ease-in-out
+  camera: bez(.55, .02, .25, 1),
+  assenta: bez(.22, 1, .36, 1),
+  varre: bez(.4, 0, .2, 1),
+  desenha: bez(.3, 0, .2, 1),
+};
+
+/** Progresso 0..1 de uma animacao que comeca em `ini` e dura `dur`. */
+function fase(t, ini, dur, curva = EASE.linear){
+  if (t <= ini) return 0;
+  if (t >= ini + dur) return 1;
+  return curva((t - ini) / dur);
+}
+
+/** Interpola nas MESMAS marcas do CSS (0/28/64/100), easing por trecho. */
+function nasMarcas(p, valores, curva){
+  const marcas = [0, .28, .64, 1];
+  for (let i = 0; i < 3; i++){
+    if (p <= marcas[i+1] || i === 2){
+      const local = (p - marcas[i]) / (marcas[i+1] - marcas[i]);
+      const e = curva(Math.max(0, Math.min(1, local)));
+      return valores[i] + (valores[i+1] - valores[i]) * e;
+    }
+  }
+  return valores[3];
+}
+
+function textoCentrado(g, txt, y, px, cor, espaco, maiusc){
+  if (!txt) return;
+  const s = maiusc ? txt.toUpperCase() : txt;
+  g.save();
+  g.font = `300 ${px}px Jost, system-ui, "Noto Sans", sans-serif`;
+  g.fillStyle = cor;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  if (g.letterSpacing !== undefined) g.letterSpacing = `${espaco}px`;
+  g.shadowColor = "rgba(0,0,0,.9)"; g.shadowBlur = px * 0.5;
+  // encolhe se nao couber, como a pagina faz
+  let f = px;
+  while (g.measureText(s).width > g.canvas.width * 0.88 && f > px * 0.5){
+    f -= px * 0.04;
+    g.font = `300 ${f}px Jost, system-ui, "Noto Sans", sans-serif`;
+  }
+  g.fillText(s, g.canvas.width / 2, y);
+  g.restore();
+}
+
+/**
+ * Desenha UM quadro no instante t (ms desde o inicio), num canvas quadrado.
+ * Os tempos abaixo sao os mesmos do bloco TIMELINE no CSS.
+ */
+function desenharQuadro(g, t, opcoes){
+  const L = g.canvas.width;
+  const r = opcoes.ritmo || 1;
+  const s = (seg) => seg * 1000 * r;         // segundos do CSS -> ms deste ritmo
+  const { nc, nl, linha, coluna } = opcoes.celula;
+  const img = opcoes.mosaico, logo = opcoes.logo;
+
+  g.fillStyle = "#000"; g.fillRect(0, 0, L, L);
+
+  // ---- camera: zoom com limite de borda, igual a montarKeyframes ----
+  const fx = (coluna + .5) / nc, fy = (linha + .5) / nl;
+  const kmax = .29 * nc;
+  const ks = [1, kmax * .15625, kmax * .4375, kmax];
+  const p = fase(t, s(4.2), s(5.6), (x) => x);          // progresso linear
+  const k = nasMarcas(p, ks, EASE.camera);
+  const respira = 1 + .045 * fase(t, s(.6), s(4.6), EASE.entraSai);
+  const kk = k * respira;
+
+  const ux = Math.max(0, Math.min(fx * kk - .5, kk - 1));
+  const uy = Math.max(0, Math.min(fy * kk - .5, kk - 1));
+  const sx = (fx * kk - ux) * L, sy = (fy * kk - uy) * L;   // celula na tela
+
+  const vis = img.naturalWidth / kk;
+  const ox = ux * img.naturalWidth / kk, oy = uy * img.naturalHeight / kk;
+  const escuro = 1 - .55 * fase(t, s(5.9), s(1.7), EASE.entraSai);
+  const someMosaico = 1 - fase(t, s(9.1), s(1.3), EASE.entraSai);
+
+  if (someMosaico > 0){
+    g.save();
+    g.globalAlpha = someMosaico;
+    g.filter = `brightness(${escuro})`;
+    g.drawImage(img, ox, oy, vis, vis * (img.naturalHeight / img.naturalWidth), 0, 0, L, L);
+    g.restore();
+  }
+
+  // ---- varreduras ----
+  for (const [ini, dur] of [[1.0, 2.3], [2.6, 1.7]]){
+    const v = fase(t, s(ini), s(dur), EASE.varre);
+    if (v > 0 && v < 1){
+      const y = (-.05 + 1.1 * v) * L;
+      const grd = g.createLinearGradient(0, 0, L, 0);
+      grd.addColorStop(0, "rgba(56,189,248,0)");
+      grd.addColorStop(.5, "rgba(56,189,248,.85)");
+      grd.addColorStop(1, "rgba(56,189,248,0)");
+      g.fillStyle = grd; g.fillRect(0, y - L*.002, L, L*.004);
+    }
+  }
+
+  // ---- escurecimento que segue a celula ----
+  const foco = fase(t, s(4.6), s(2.6), EASE.entra) * (1 - fase(t, s(9.1), s(1.3), EASE.entraSai));
+  if (foco > 0){
+    const grd = g.createRadialGradient(sx, sy, L*.02, sx, sy, L*.75);
+    grd.addColorStop(0, `rgba(0,0,0,${.10*foco})`);
+    grd.addColorStop(.18, `rgba(0,0,0,${.42*foco})`);
+    grd.addColorStop(.42, `rgba(0,0,0,${.68*foco})`);
+    grd.addColorStop(1, `rgba(0,0,0,${.80*foco})`);
+    g.fillStyle = grd; g.fillRect(0, 0, L, L);
+  }
+
+  // ---- anel na celula ----
+  const anelVis = fase(t, s(5.6), s(1.1), EASE.assenta) * (1 - fase(t, s(8.6), s(1.1), EASE.entra));
+  if (anelVis > 0){
+    const lado = (100 / nc / 100) * kk * L * 1.18;
+    g.save();
+    g.globalAlpha = anelVis;
+    g.strokeStyle = "rgba(56,189,248,.95)";
+    g.lineWidth = Math.max(2, L * .004);
+    g.shadowColor = "rgba(56,189,248,.7)"; g.shadowBlur = L * .03;
+    g.beginPath();
+    const x0 = sx - lado/2, y0 = sy - lado/2, rr = lado * .09;
+    if (g.roundRect) g.roundRect(x0, y0, lado, lado, rr); else g.rect(x0, y0, lado, lado);
+    g.stroke();
+    g.restore();
+  }
+
+  // ---- brilho e pulsos do cartao final ----
+  const cxF = L/2, cyF = L*.38;
+  const brilho = fase(t, s(10.0), s(2.2), EASE.sai);
+  if (brilho > 0){
+    const rr = L * .39 * (.55 + .45 * brilho);
+    const grd = g.createRadialGradient(cxF, cyF, 0, cxF, cyF, rr);
+    grd.addColorStop(0, `rgba(37,99,235,${.42*brilho})`);
+    grd.addColorStop(.36, `rgba(56,189,248,${.13*brilho})`);
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd; g.fillRect(0, 0, L, L);
+  }
+  for (const ini of [11.4, 12.8, 14.2]){
+    const dur = s(4.2);
+    let v = (t - s(ini)) % dur;
+    if (t >= s(ini) && v >= 0){
+      const q = v / dur;
+      const alfa = q < .12 ? (q/.12)*.55 : .55 * (1 - (q-.12)/.88);
+      if (alfa > 0){
+        g.save();
+        g.globalAlpha = alfa;
+        g.strokeStyle = "rgba(56,189,248,.5)"; g.lineWidth = Math.max(1, L*.0015);
+        g.beginPath(); g.arc(cxF, cyF, L*.15*(.52 + 1.78*q), 0, Math.PI*2); g.stroke();
+        g.restore();
+      }
+    }
+  }
+
+  // ---- aro que se desenha ----
+  const aro = fase(t, s(10.6), s(1.8), EASE.desenha);
+  if (aro > 0){
+    g.save();
+    const grd = g.createLinearGradient(0, 0, L, L);
+    grd.addColorStop(0, "#38bdf8"); grd.addColorStop(.55, "#2563eb");
+    grd.addColorStop(1, "rgba(56,189,248,.25)");
+    g.strokeStyle = grd; g.lineWidth = L * .0045; g.lineCap = "round";
+    g.shadowColor = "rgba(56,189,248,.9)"; g.shadowBlur = L*.01;
+    g.beginPath();
+    g.arc(cxF, cyF, L*.24, -Math.PI/2, -Math.PI/2 + Math.PI*2*aro);
+    g.stroke();
+    g.restore();
+  }
+
+  // ---- logotipo: acompanha a celula, depois assenta ----
+  const revela = fase(t, s(5.9), s(1.1), EASE.sai);
+  if (revela > 0 && logo){
+    const larg = nasMarcas(p, [100/nc, 100/nc*ks[1], 100/nc*ks[2], 100/nc*ks[3]], EASE.camera) / 100 * L;
+    const ass = fase(t, s(9.8), s(1.6), EASE.assenta);
+    const w = larg + (L*.42 - larg) * ass;
+    const cx2 = sx + (L/2 - sx) * ass;
+    const cy2 = sy + (L*.38 - sy) * ass;
+    g.save();
+    g.globalAlpha = revela;
+    g.globalCompositeOperation = opcoes.logoClaro ? "source-over" : "lighter";
+    g.drawImage(logo, cx2 - w/2, cy2 - w/2, w, w);
+    g.restore();
+  }
+
+  // ---- vinheta ----
+  const vin = fase(t, s(4.4), s(3.4), EASE.entra);
+  if (vin > 0){
+    const grd = g.createRadialGradient(L/2, L/2, L*.41, L/2, L/2, L*.78);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(1, `rgba(0,0,0,${.58*vin})`);
+    g.fillStyle = grd; g.fillRect(0, 0, L, L);
+  }
+
+  // ---- textos ----
+  const txt = opcoes.textos || {};
+  const sobe = (ini, dur, curva) => fase(t, s(ini), s(dur), curva);
+  const chap = sobe(1.2, 1.1, EASE.sai) * (1 - sobe(4.4, .8, EASE.entra));
+  if (chap > 0 && txt.chapeu){
+    g.globalAlpha = chap;
+    textoCentrado(g, txt.chapeu, L*.07, L*.026, "#9fb4c9", L*.0094, true);
+    g.globalAlpha = 1;
+  }
+  const regua = sobe(11.6, 1.1, EASE.sai);
+  if (regua > 0){
+    const w = L*.38*regua;
+    const grd = g.createLinearGradient(L/2-w/2, 0, L/2+w/2, 0);
+    grd.addColorStop(0, "rgba(56,189,248,0)");
+    grd.addColorStop(.5, "rgba(56,189,248,1)");
+    grd.addColorStop(1, "rgba(56,189,248,0)");
+    g.fillStyle = grd; g.fillRect(L/2-w/2, L*.63, w, L*.002);
+  }
+  const linhas = [
+    [txt.titulo, 11.8, .67, .046, "#eef6ff", .0074, true],
+    [txt.frase, 13.1, .76, .029, "#aec4da", .0015, false],
+    [txt.rodape, 14.6, .90, .022, "#8fb0cc", .0044, true],
+  ];
+  for (const [s2, ini, y, tam, cor, esp, maiusc] of linhas){
+    const a = sobe(ini, 1.15, EASE.assenta);
+    if (a > 0 && s2){
+      g.globalAlpha = a;
+      textoCentrado(g, s2, L*y + L*.011*(1-a), L*tam, cor, L*esp, maiusc);
+      g.globalAlpha = 1;
+    }
+  }
+  const cred = fase(t, s(15.2), s(1.4), EASE.sai) * .85;
+  if (cred > 0){
+    g.globalAlpha = cred;
+    textoCentrado(g, `made with @${PERFIL}  ·  viligion.com`, L*.962, L*.021, "#7792ad", L*.0025, false);
+    g.globalAlpha = 1;
+  }
+
+  // ---- cortina ----
+  const abre = 1 - fase(t, 0, s(1), EASE.sai);
+  const fecha = fase(t, s(16.4), s(1.6), EASE.entra);
+  const preto = Math.max(abre, fecha);
+  if (preto > 0){ g.fillStyle = `rgba(0,0,0,${preto})`; g.fillRect(0, 0, L, L); }
+}
+
+/** Duracao total, no ritmo escolhido. */
+function duracaoTotal(ritmo){ return 18400 * ritmo; }
 
 async function gravar(){
   const fmt = formatoDisponivel();
-  estadoHTML(T("escolhaAba"));
-
-  let fonte;
-  try {
-    fonte = await navigator.mediaDevices.getDisplayMedia({
-      video: { displaySurface: "browser", frameRate: 30 },
-      audio: false,
-      preferCurrentTab: true,
-      selfBrowserSurface: "include",
-      surfaceSwitching: "exclude",
-    });
-  } catch {
-    estado.textContent = T("gravCancel") + "   [" + VERSAO + "]";
+  if (!fmt || !HTMLCanvasElement.prototype.captureStream || typeof MediaRecorder === "undefined") {
+    estadoHTML(T("gravSemSuporte"));
     return;
   }
 
-  const trilha = fonte.getVideoTracks()[0];
-  const superficie = trilha.getSettings().displaySurface;
-
-  if (typeof CropTarget !== "undefined" && typeof trilha.cropTo === "function") {
-    try { await trilha.cropTo(await CropTarget.fromElement(palco)); } catch { /* conferido abaixo */ }
-  }
-
-  const video = document.createElement("video");
-  video.srcObject = fonte;
-  video.muted = true;
-  await new Promise((r) => { video.onloadedmetadata = r; video.play().catch(r); });
-
   /*
-   * ESPERA O QUADRO ESTABILIZAR ANTES DE DECIDIR.
+   * Grava o que ESTA PAGINA desenha, nao o que o sistema captura da tela.
    *
-   * `cropTo` resolve antes de o elemento <video> refletir o novo tamanho:
-   * `videoWidth` continua um tempo com a dimensao antiga. Medindo uma vez so,
-   * a decisao saia "nao recortou", o recorte manual entrava POR CIMA de um
-   * quadro que ja estava recortado, e o video virava um zoom numa regiao
-   * aleatoria do mosaico. Foi o defeito reportado.
+   * A versao anterior pedia getDisplayMedia e recortava o palco do quadro
+   * capturado. Isso trouxe tres classes de defeito em sequencia - superficie
+   * errada, recorte nao aplicado, getSettings mentindo - e cada correcao
+   * minha abria a proxima. Aqui nao ha o que negociar com o navegador: o
+   * canvas e nosso, e `desenharQuadro` produz cada imagem.
    *
-   * Entao aqui a pergunta e feita repetidamente ate a proporcao do quadro
-   * bater com a do palco (recortou) ou com a da janela (nao recortou).
+   * Tambem e o que faz o celular gravar: MediaRecorder existe no Android, e
+   * so a captura de tela e que nao.
    */
-  const cxP = palco.getBoundingClientRect();
-  const aspPalco = cxP.width / cxP.height;
-  const aspJanela = window.innerWidth / window.innerHeight;
-
-  /*
-   * DECIDE PELA PROPORCAO MAIS PROXIMA, NAO POR UM LIMIAR.
-   *
-   * Medido num Chrome real: palco 532x532 (1,000), janela 1536x682 (2,252),
-   * e o quadro depois de um cropTo BEM SUCEDIDO vinha 1140x1080 - proporcao
-   * 1,056. Ou seja, o recorte funciona mas a saida nao sai exatamente
-   * quadrada. Com tolerancia de 0,05 isso reprovava por um fio (0,056), o
-   * recorte manual entrava por cima do quadro ja recortado, e o video virava
-   * um zoom numa regiao aleatoria.
-   *
-   * Comparar as duas distancias elimina o numero magico: 1,056 esta
-   * incomparavelmente mais perto de 1,000 do que de 2,252.
-   */
-  let asp = 0;
-  for (let i = 0; i < 20 && !asp; i++) {
-    await new Promise((r) => setTimeout(r, 100));
-    if (video.videoWidth && video.videoHeight) asp = video.videoWidth / video.videoHeight;
-  }
-  const dist = (x, y) => Math.abs(Math.log(x / y));
-  const recortado = asp > 0 && dist(asp, aspPalco) < dist(asp, aspJanela);
-
-  if (!recortado && superficie !== "browser") {
-    trilha.stop();
-    estadoHTML(T("gravFalhou", { d: `${superficie || "?"} ${video.videoWidth}x${video.videoHeight} [${VERSAO}]` }));
-    return;
-  }
-
   const LADO = 1080;
   const tela = document.createElement("canvas");
   tela.width = tela.height = LADO;
   const g = tela.getContext("2d");
 
-  /*
-   * Desenha a cada QUADRO DE VIDEO (requestVideoFrameCallback), nao a cada
-   * quadro de tela. requestAnimationFrame e estrangulado quando a aba perde o
-   * foco - e a pessoa perde o foco justamente ao escolher a aba no seletor,
-   * o que congelava ou rasgava a imagem.
-   */
-  let rodando = true;
-  const porQuadro = () => {
-    if (!rodando) return;
-    if (recortado) {
-      /*
-       * A trilha ja e o palco, mas pode vir com sobra lateral (medido:
-       * 1140x1080 pra um palco quadrado). Esticar deformaria em ~5%, entao
-       * pega o maior retangulo central com a proporcao do palco.
-       */
-      const vw = video.videoWidth, vh = video.videoHeight;
-      let lw = vw, lh = vw / aspPalco;
-      if (lh > vh) { lh = vh; lw = vh * aspPalco; }
-      g.drawImage(video, (vw - lw) / 2, (vh - lh) / 2, lw, lh, 0, 0, LADO, LADO);
-    } else {
-      // Caminho de reserva: a aba inteira veio, entao recorta pela posicao.
-      // Recalculado a cada quadro porque a pagina pode rolar.
-      const r = palco.getBoundingClientRect();
-      const k = video.videoWidth / window.innerWidth;
-      g.drawImage(video, r.x * k, r.y * k, r.width * k, r.height * k, 0, 0, LADO, LADO);
-    }
-    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(porQuadro);
-    else requestAnimationFrame(porQuadro);
+  const ritmo = parseFloat(getComputedStyle(palco).getPropertyValue("--r")) || 1;
+  const total = duracaoTotal(ritmo);
+
+  const opcoes = {
+    ritmo,
+    celula,
+    mosaico,
+    logo: nitido.complete && nitido.naturalWidth ? nitido : null,
+    logoClaro: nitido.className === "claro",
+    textos: {
+      chapeu: $("chapeu").textContent,
+      titulo: $("titulo").textContent,
+      frase: $("frase").textContent,
+      rodape: $("rodape").textContent,
+    },
   };
-  porQuadro();
+
+  // garante a fonte carregada antes do primeiro quadro, senao o texto troca
+  // de tipo no meio da gravacao
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch {} }
 
   const pedacos = [];
   const rec = new MediaRecorder(tela.captureStream(30), {
-    mimeType: fmt.mime,
-    videoBitsPerSecond: 8_000_000,
+    mimeType: fmt.mime, videoBitsPerSecond: 8_000_000,
   });
   rec.ondataavailable = (e) => { if (e.data.size) pedacos.push(e.data); };
-
   const pronto = new Promise((r) => (rec.onstop = r));
-  rec.start();
-  tocar();
 
-  const ritmo = parseFloat(getComputedStyle(palco).getPropertyValue("--r")) || 1;
-  const total = Math.ceil(18.4 * ritmo);
-  for (let s = total; s > 0; s--) {
-    estado.textContent = T("gravando", { s });
-    await new Promise((r) => setTimeout(r, 1000));
-  }
+  rec.start();
+  tocar();                       // a previa na tela acompanha, so por conforto
+
+  const inicio = performance.now();
+  await new Promise((resolve) => {
+    const passo = () => {
+      const t2 = performance.now() - inicio;
+      desenharQuadro(g, Math.min(t2, total), opcoes);
+      if (t2 % 500 < 34) estado.textContent = T("gravandoC", { p: Math.round(t2 / total * 100) });
+      if (t2 >= total) return resolve();
+      requestAnimationFrame(passo);
+    };
+    passo();
+  });
 
   rec.stop();
-  rodando = false;
-  fonte.getTracks().forEach((x) => x.stop());
   await pronto;
 
   const blob = new Blob(pedacos, { type: fmt.mime });
   const nome = `colosseum-opening.${fmt.ext}`;
-
-  // guarda pro botao de compartilhar, que so aparece se o aparelho aceitar
   const arquivo = new File([blob], nome, { type: fmt.mime });
   videoGravado = { arquivo, nome };
   $("compartilhar").hidden = !podeCompartilhar(arquivo);
+
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = nome;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   estado.textContent = T("gravOk", { f: nome, mb: (blob.size / 1048576).toFixed(1) })
-    + (recortado ? "" : "  [crop: manual]")
-    // Medido no Firefox 158: so WebM. Melhor dizer do que a pessoa descobrir
-    // no momento de postar.
     + (fmt.ext === "webm" ? "  " + T("avisoWebm") : "")
     + "   [" + VERSAO + "]";
 }
-
-/* ===================================================================
-   COMPARTILHAR
-
-   Postar direto no X a partir daqui nao da: exigiria app registrado, OAuth e
-   um backend pra guardar o segredo - uma pagina estatica nao tem onde
-   esconder credencial - alem de plano pago da API pra enviar midia.
-
-   O que da, e e melhor, e entregar o arquivo pro proprio aparelho decidir:
-   `navigator.share` abre a folha de compartilhamento do sistema, e a pessoa
-   escolhe X, Telegram, WhatsApp ou o que tiver instalado. Sem chave, sem
-   servidor, sem depender de uma rede especifica.
-
-   Conferido neste Chrome: canShare aceita video/mp4. Onde nao aceitar, o
-   botao nem aparece e o download continua sendo o caminho.
-   =================================================================== */
-let videoGravado = null;   // { arquivo, nome }
-
-function podeCompartilhar(arquivo){
-  return !!(navigator.canShare && navigator.share && navigator.canShare({ files: [arquivo] }));
-}
-
-$("compartilhar").onclick = async () => {
-  if (!videoGravado) return;
-  if (!podeCompartilhar(videoGravado.arquivo)) {
-    estado.textContent = T("semCompartilhar");
-    return;
-  }
-  estado.textContent = T("compartilhando");
-  try {
-    await navigator.share({
-      files: [videoGravado.arquivo],
-      text: `Found us in the Crypto World's Fair mosaic.\n\nMade with @${PERFIL}'s free tool: ${PAGINA}`,
-    });
-  } catch { /* a pessoa fechou a folha; nada a fazer */ }
-};
 
 $("baixar").onclick = () => {
   /*
@@ -1900,13 +2090,10 @@ $("baixar").onclick = () => {
    * apagado e nenhum motivo. Agora ele responde dizendo por que, e aponta a
    * saida que funciona ali.
    */
-  if (!podeGravar()) { estadoHTML(T("semVideoAqui")); return; }
+  if (!podeGravar()) { estadoHTML(T("gravSemSuporte")); return; }
   gravar();
 };
-if (!podeGravar()) {
-  $("baixar").style.opacity = ".55";
-  estadoHTML(T("semVideoAqui"));
-}
+if (!podeGravar()) $("baixar").style.opacity = ".55";
 
 /* ===================================================================
    IMAGEM, PRA QUEM NAO PODE GRAVAR
