@@ -795,7 +795,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261027-af9ae62";
+const VERSAO = "20261030-ccd9485";
 
 /* ===================================================================
    IDIOMAS
@@ -1813,6 +1813,16 @@ function desenharQuadro(g, t, opcoes){
   const { nc, nl, linha, coluna } = opcoes.celula;
   const img = opcoes.mosaico, logo = opcoes.logo;
 
+  /*
+   * Cor e final vinham FIXOS aqui - ciano e sonar - enquanto a previa na
+   * tela obedecia a escolha da pessoa. Quem pedia violeta via violeta na
+   * pagina e baixava um arquivo ciano. Agora `opcoes` traz os dois trios
+   * RGB do palco (--ac1/--ac2) e a classe de final, e tudo abaixo os usa.
+   */
+  const A1 = (a) => `rgba(${opcoes.ac1},${a})`;
+  const A2 = (a) => `rgba(${opcoes.ac2},${a})`;
+  const fim = opcoes.fim || "sonar";            // sonar | grade | limpo
+
   g.fillStyle = "#000"; g.fillRect(0, 0, L, L);
 
   // ---- camera: zoom com limite de borda, igual a montarKeyframes ----
@@ -1845,11 +1855,14 @@ function desenharQuadro(g, t, opcoes){
   for (const [ini, dur] of [[1.0, 2.3], [2.6, 1.7]]){
     const v = fase(t, s(ini), s(dur), EASE.varre);
     if (v > 0 && v < 1){
+      // o CSS acende em 10% e apaga em 90%; sem isso a linha pisca de
+      // repente no topo e desaparece de repente embaixo
+      const op = .85 * Math.min(1, v / .10, (1 - v) / .10);
       const y = (-.05 + 1.1 * v) * L;
       const grd = g.createLinearGradient(0, 0, L, 0);
-      grd.addColorStop(0, "rgba(56,189,248,0)");
-      grd.addColorStop(.5, "rgba(56,189,248,.85)");
-      grd.addColorStop(1, "rgba(56,189,248,0)");
+      grd.addColorStop(0, A1(0));
+      grd.addColorStop(.5, A1(op));
+      grd.addColorStop(1, A1(0));
       g.fillStyle = grd; g.fillRect(0, y - L*.002, L, L*.004);
     }
   }
@@ -1871,14 +1884,75 @@ function desenharQuadro(g, t, opcoes){
     const lado = (100 / nc / 100) * kk * L * 1.18;
     g.save();
     g.globalAlpha = anelVis;
-    g.strokeStyle = "rgba(56,189,248,.95)";
+    g.strokeStyle = A1(.95);
     g.lineWidth = Math.max(2, L * .004);
-    g.shadowColor = "rgba(56,189,248,.7)"; g.shadowBlur = L * .03;
+    g.shadowColor = A1(.7); g.shadowBlur = L * .03;
     g.beginPath();
     const x0 = sx - lado/2, y0 = sy - lado/2, rr = lado * .09;
     if (g.roundRect) g.roundRect(x0, y0, lado, lado, rr); else g.rect(x0, y0, lado, lado);
     g.stroke();
     g.restore();
+  }
+
+  /* ---- aurora: o fundo do cartao final ----
+     Faltava inteira no arquivo gravado. E justamente o "fundo melhor atras
+     do logotipo" que foi pedido: duas manchas difusas que nascem com o
+     cartao e vagam devagar. `lighter` aqui faz o papel de mix-blend-mode:
+     screen do CSS - sobre fundo escuro os dois somam luz do mesmo jeito. */
+  if (fim === "sonar"){
+    const nasce = fase(t, s(10.0), s(2.4), EASE.sai) * .85;
+    if (nasce > 0){
+      // vagar: 19s em laco, mas o video acaba antes de fechar a volta
+      const q = ((t - s(10.0)) / s(19)) % 1;
+      const mv = (a, b, c) => nasMarcas(q, [a, b, c, a], EASE.entraSai);
+      const dx = mv(0, .06, -.05), dy = mv(0, -.05, .04), es = mv(1, 1.14, .92);
+      g.save();
+      g.globalCompositeOperation = "lighter";
+      g.globalAlpha = nasce;
+      for (const [cx, cy, raio, cor, tr] of [
+        [.48, .52, .26, A2(.55), A2(0)],
+        [.92, .70, .22, A1(.42), A1(0)],
+      ]){
+        const rr = raio * es * L;
+        const x = (cx + dx) * L, y = (cy + dy) * L;
+        const grd = g.createRadialGradient(x, y, 0, x, y, rr);
+        grd.addColorStop(0, cor);
+        grd.addColorStop(1, tr);
+        g.fillStyle = grd; g.fillRect(0, 0, L, L);
+      }
+      g.restore();
+    }
+  }
+
+  /* ---- malha: o final "Grid" ----
+     Tambem faltava. Quem escolhia Grid via a grade na previa e baixava um
+     video sem ela. Desenhada uma vez e guardada em `opcoes`, porque so a
+     opacidade muda no tempo. */
+  if (fim === "grade"){
+    const ap = fase(t, s(10.2), s(2.2), EASE.sai);
+    if (ap > 0){
+      if (!opcoes._malha){
+        const m = document.createElement("canvas");
+        m.width = m.height = L;
+        const h = m.getContext("2d");
+        h.strokeStyle = A1(.075); h.lineWidth = 1;
+        const passo = L * .05;
+        h.beginPath();
+        for (let i = 0; i <= L; i += passo){
+          h.moveTo(0, i + .5); h.lineTo(L, i + .5);
+          h.moveTo(i + .5, 0); h.lineTo(i + .5, L);
+        }
+        h.stroke();
+        // mask-image: radial-gradient(ellipse 62% 62% at 50% 38%, #000 18%, transparent 76%)
+        h.globalCompositeOperation = "destination-in";
+        const gm = h.createRadialGradient(L*.5, L*.38, 0, L*.5, L*.38, L*.62);
+        gm.addColorStop(.18, "rgba(0,0,0,1)");
+        gm.addColorStop(.76, "rgba(0,0,0,0)");
+        h.fillStyle = gm; h.fillRect(0, 0, L, L);
+        opcoes._malha = m;
+      }
+      g.save(); g.globalAlpha = ap; g.drawImage(opcoes._malha, 0, 0); g.restore();
+    }
   }
 
   // ---- brilho e pulsos do cartao final ----
@@ -1887,12 +1961,13 @@ function desenharQuadro(g, t, opcoes){
   if (brilho > 0){
     const rr = L * .39 * (.55 + .45 * brilho);
     const grd = g.createRadialGradient(cxF, cyF, 0, cxF, cyF, rr);
-    grd.addColorStop(0, `rgba(37,99,235,${.42*brilho})`);
-    grd.addColorStop(.36, `rgba(56,189,248,${.13*brilho})`);
+    grd.addColorStop(0, A2(.42 * brilho));
+    grd.addColorStop(.36, A1(.13 * brilho));
     grd.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = grd; g.fillRect(0, 0, L, L);
   }
-  for (const ini of [11.4, 12.8, 14.2]){
+  // so no final "Sonar": o CSS esconde os pulsos em Grid e em Limpo
+  if (fim === "sonar") for (const ini of [11.4, 12.8, 14.2]){
     const dur = s(4.2);
     let v = (t - s(ini)) % dur;
     if (t >= s(ini) && v >= 0){
@@ -1901,22 +1976,25 @@ function desenharQuadro(g, t, opcoes){
       if (alfa > 0){
         g.save();
         g.globalAlpha = alfa;
-        g.strokeStyle = "rgba(56,189,248,.5)"; g.lineWidth = Math.max(1, L*.0015);
-        g.beginPath(); g.arc(cxF, cyF, L*.15*(.52 + 1.78*q), 0, Math.PI*2); g.stroke();
+        g.strokeStyle = A1(.5); g.lineWidth = Math.max(1, L*.0015);
+        // ease-out, como o CSS: o anel abre rapido e desacelera
+        const esc = .52 + 1.78 * EASE.sai(q);
+        g.beginPath(); g.arc(cxF, cyF, L*.15*esc, 0, Math.PI*2); g.stroke();
         g.restore();
       }
     }
   }
 
   // ---- aro que se desenha ----
-  const aro = fase(t, s(10.6), s(1.8), EASE.desenha);
+  // escondido no final "Limpo", como no CSS
+  const aro = fim === "limpo" ? 0 : fase(t, s(10.6), s(1.8), EASE.desenha);
   if (aro > 0){
     g.save();
     const grd = g.createLinearGradient(0, 0, L, L);
-    grd.addColorStop(0, "#38bdf8"); grd.addColorStop(.55, "#2563eb");
-    grd.addColorStop(1, "rgba(56,189,248,.25)");
+    grd.addColorStop(0, A1(1)); grd.addColorStop(.55, A2(1));
+    grd.addColorStop(1, A1(.25));
     g.strokeStyle = grd; g.lineWidth = L * .0045; g.lineCap = "round";
-    g.shadowColor = "rgba(56,189,248,.9)"; g.shadowBlur = L*.01;
+    g.shadowColor = A1(.9); g.shadowBlur = L*.01;
     g.beginPath();
     g.arc(cxF, cyF, L*.24, -Math.PI/2, -Math.PI/2 + Math.PI*2*aro);
     g.stroke();
@@ -1960,18 +2038,19 @@ function desenharQuadro(g, t, opcoes){
   if (regua > 0){
     const w = L*.38*regua;
     const grd = g.createLinearGradient(L/2-w/2, 0, L/2+w/2, 0);
-    grd.addColorStop(0, "rgba(56,189,248,0)");
-    grd.addColorStop(.5, "rgba(56,189,248,1)");
-    grd.addColorStop(1, "rgba(56,189,248,0)");
+    grd.addColorStop(0, A1(0));
+    grd.addColorStop(.5, A1(1));
+    grd.addColorStop(1, A1(0));
     g.fillStyle = grd; g.fillRect(L/2-w/2, L*.63, w, L*.002);
   }
+  // a ultima coluna e a duracao: 1.1s / 1.1s / 1.2s, como no CSS
   const linhas = [
-    [txt.titulo, 11.8, .67, .046, "#eef6ff", .0074, true],
-    [txt.frase, 13.1, .76, .029, "#aec4da", .0015, false],
-    [txt.rodape, 14.6, .90, .022, "#8fb0cc", .0044, true],
+    [txt.titulo, 11.8, .67, .046, "#eef6ff", .0074, true, 1.1],
+    [txt.frase, 13.1, .76, .029, "#aec4da", .0015, false, 1.1],
+    [txt.rodape, 14.6, .90, .022, "#8fb0cc", .0044, true, 1.2],
   ];
-  for (const [s2, ini, y, tam, cor, esp, maiusc] of linhas){
-    const a = sobe(ini, 1.15, EASE.assenta);
+  for (const [s2, ini, y, tam, cor, esp, maiusc, dur] of linhas){
+    const a = sobe(ini, dur, EASE.assenta);
     if (a > 0 && s2){
       g.globalAlpha = a;
       textoCentrado(g, s2, L*y + L*.011*(1-a), L*tam, cor, L*esp, maiusc);
@@ -1990,6 +2069,38 @@ function desenharQuadro(g, t, opcoes){
   const fecha = fase(t, s(16.4), s(1.6), EASE.entra);
   const preto = Math.max(abre, fecha);
   if (preto > 0){ g.fillStyle = `rgba(0,0,0,${preto})`; g.fillRect(0, 0, L, L); }
+}
+
+/**
+ * Tudo o que `desenharQuadro` precisa saber, lido da pagina.
+ *
+ * Esta funcao existe separada de `gravar()` para ser verificavel: foi aqui
+ * que moravam dois defeitos - cor e final fixos em ciano+sonar - e um defeito
+ * dentro de uma funcao de 60 linhas que grava 18 segundos de video e um
+ * defeito que so se descobre baixando o arquivo. Agora da pra conferir num
+ * instante, sem gravar nada.
+ */
+function opcoesDoVideo(){
+  const cs = getComputedStyle(palco);
+  return {
+    ritmo: parseFloat(cs.getPropertyValue("--r")) || 1,
+    // a escolha da pessoa, nao um padrao: --ac1/--ac2 vem da paleta aplicada
+    // no palco, e a classe f-* diz qual final ela marcou
+    ac1: cs.getPropertyValue("--ac1").trim() || "56,189,248",
+    ac2: cs.getPropertyValue("--ac2").trim() || "37,99,235",
+    fim: palco.classList.contains("f-grade") ? "grade"
+       : palco.classList.contains("f-limpo") ? "limpo" : "sonar",
+    celula,
+    mosaico,
+    logo: nitido.complete && nitido.naturalWidth ? nitido : null,
+    logoClaro: nitido.className === "claro",
+    textos: {
+      chapeu: $("chapeu").textContent,
+      titulo: $("titulo").textContent,
+      frase: $("frase").textContent,
+      rodape: $("rodape").textContent,
+    },
+  };
 }
 
 /** Duracao total, no ritmo escolhido. */
@@ -2019,22 +2130,8 @@ async function gravar(){
   tela.width = tela.height = LADO;
   const g = tela.getContext("2d");
 
-  const ritmo = parseFloat(getComputedStyle(palco).getPropertyValue("--r")) || 1;
-  const total = duracaoTotal(ritmo);
-
-  const opcoes = {
-    ritmo,
-    celula,
-    mosaico,
-    logo: nitido.complete && nitido.naturalWidth ? nitido : null,
-    logoClaro: nitido.className === "claro",
-    textos: {
-      chapeu: $("chapeu").textContent,
-      titulo: $("titulo").textContent,
-      frase: $("frase").textContent,
-      rodape: $("rodape").textContent,
-    },
-  };
+  const opcoes = opcoesDoVideo();
+  const total = duracaoTotal(opcoes.ritmo);
 
   // garante a fonte carregada antes do primeiro quadro, senao o texto troca
   // de tipo no meio da gravacao
