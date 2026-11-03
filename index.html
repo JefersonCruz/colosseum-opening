@@ -187,6 +187,11 @@
   #palco.f-grade .pulso, #palco.f-grade .aurora{ display:none; }
   #palco.f-sonar #malha, #palco.f-limpo #malha{ display:none; }
 
+  .previa-fim{margin:10px 0 2px; display:flex; flex-direction:column; gap:6px;}
+  .previa-fim canvas{width:100%; max-width:260px; aspect-ratio:1; border-radius:10px;
+    background:#000; border:1px solid rgba(var(--ac1),.22); align-self:center;}
+  .manual-rot{display:block; margin-top:4px;}
+
   /* ===================== TIMELINE ===================== */
   .tocando #cortina  {animation:sumir calc(1s*var(--r)) ease-out 0s forwards, aparecer calc(1.6s*var(--r)) ease-in calc(16.4s*var(--r)) forwards}
   .tocando #camera   {animation:respirar calc(4.6s*var(--r)) ease-in-out calc(.6s*var(--r)) forwards, sumir calc(1.3s*var(--r)) ease-in-out calc(9.1s*var(--r)) forwards}
@@ -496,7 +501,18 @@
       <div><label for="t1" data-t="rotTitulo"></label><input id="t1" placeholder="WHAT YOU DO, IN FIVE WORDS"></div>
       <div><label for="t2" data-t="rotLinha"></label><input id="t2" placeholder="One sentence that earns the click."></div>
       <div><label for="t3" data-t="rotRodape"></label><input id="t3" placeholder="Your track · yoursite.com"></div>
+      <!--
+        A previa do cartao final, desenhada pelo MESMO codigo que grava o
+        arquivo. Existe porque antes digitar nao mostrava nada: o palco so
+        exibe o final depois de rodar os 18 segundos, entao a pessoa escrevia
+        o titulo, a tela nao reagia, e ela nao tinha como saber se valeu.
+      -->
+      <div class="previa-fim">
+        <span class="rot" data-t="previaRot"></span>
+        <canvas id="previaFim" width="420" height="420"></canvas>
+      </div>
       <div class="manual">
+        <span class="rot manual-rot" data-t="posManual"></span>
         <div><label for="ml" data-t="rotLin"></label><input id="ml" type="number" min="0" placeholder="0–54"></div>
         <div><label for="mc" data-t="rotCol"></label><input id="mc" type="number" min="0" placeholder="0–54"></div>
         <button id="usar" class="secundario" data-t="usar"></button>
@@ -795,7 +811,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261102-e7e29ad";
+const VERSAO = "20261102-1aa0c94";
 
 /* ===================================================================
    IDIOMAS
@@ -809,6 +825,10 @@ const VERSAO = "20261102-e7e29ad";
    =================================================================== */
 const IDIOMAS = {
   "en": {
+    "posManual": "Not the right tile? Set it by hand",
+    "escrevaAgora": "Found it. Now write what the video ends on — your words are the point of it.",
+    "previaRot": "This is how it ends:",
+    "semTexto": "No text yet — the video will end on your logo alone.",
     "gravandoC": "Rendering… {p}%",
     "podeGravarAgora": "Works on phones too — no screen capture involved.",
     "baixarImagem": "⬇ Download image",
@@ -862,7 +882,7 @@ const IDIOMAS = {
     "sonar": "Sonar",
     "grade": "Grid",
     "limpo": "Clean",
-    "resumo": "End-card text & manual cell",
+    "resumo": "Your words on the end card",
     "rotTitulo": "Title",
     "rotLinha": "Line",
     "rotRodape": "Footer",
@@ -889,6 +909,10 @@ const IDIOMAS = {
     "rodapeA": "On desktop, <b>Download video</b> records it for you (MP4, 1080×1080). Elsewhere, capture the <b>square area</b> yourself — not the whole screen. Runs ~18s and loops cleanly."
   },
   "pt": {
+    "posManual": "Não é essa a célula? Informe à mão",
+    "escrevaAgora": "Achei. Agora escreva como o vídeo termina — suas palavras são o ponto dele.",
+    "previaRot": "É assim que termina:",
+    "semTexto": "Sem texto ainda — o vídeo vai terminar só no seu logotipo.",
     "gravandoC": "Renderizando… {p}%",
     "podeGravarAgora": "Funciona no celular também — não usa captura de tela.",
     "baixarImagem": "⬇ Baixar imagem",
@@ -915,7 +939,7 @@ const IDIOMAS = {
     "sonar": "Sonar",
     "grade": "Grade",
     "limpo": "Limpo",
-    "resumo": "Texto do cartão e posição manual",
+    "resumo": "Suas palavras no final",
     "rotTitulo": "Título",
     "rotLinha": "Linha",
     "rotRodape": "Rodapé",
@@ -969,6 +993,10 @@ const IDIOMAS = {
     "semCompartilhar": "Este navegador não compartilha arquivos. O vídeo está nos downloads — anexe à mão."
   },
   "ru": {
+    "posManual": "Не та ячейка? Укажите вручную",
+    "escrevaAgora": "Нашлось. Теперь напишите, чем заканчивается видео — ради ваших слов оно и делается.",
+    "previaRot": "Вот как заканчивается:",
+    "semTexto": "Пока без текста — видео закончится одним логотипом.",
     "gravandoC": "Рендеринг… {p}%",
     "podeGravarAgora": "Работает и на телефоне — захват экрана не используется.",
     "baixarImagem": "⬇ Скачать картинку",
@@ -995,7 +1023,7 @@ const IDIOMAS = {
     "sonar": "Сонар",
     "grade": "Сетка",
     "limpo": "Без эффектов",
-    "resumo": "Текст карточки и ручной ввод ячейки",
+    "resumo": "Ваши слова в финале",
     "rotTitulo": "Заголовок",
     "rotLinha": "Строка текста",
     "rotRodape": "Подпись",
@@ -1049,6 +1077,10 @@ const IDIOMAS = {
     "semCompartilhar": "Этот браузер не умеет делиться файлами. Видео в загрузках — прикрепите вручную."
   },
   "zh": {
+    "posManual": "不是这一格？手动指定",
+    "escrevaAgora": "找到了。现在写下视频的结尾——你的文字才是重点。",
+    "previaRot": "结尾是这样的：",
+    "semTexto": "还没有文字——视频将只以你的标志结束。",
     "gravandoC": "正在渲染… {p}%",
     "podeGravarAgora": "手机上也能用 — 不需要屏幕录制。",
     "baixarImagem": "⬇ 下载图片",
@@ -1102,7 +1134,7 @@ const IDIOMAS = {
     "sonar": "声纳",
     "grade": "网格",
     "limpo": "简洁",
-    "resumo": "结尾文字与手动定位",
+    "resumo": "结尾要写的话",
     "rotTitulo": "标题",
     "rotLinha": "副标题",
     "rotRodape": "页脚",
@@ -1129,6 +1161,10 @@ const IDIOMAS = {
     "rodapeA": "在桌面端，点击<b>下载视频</b>即可自动录制（MP4，1080×1080）。其他设备请自行录制<b>正方形区域</b>，而不是整个屏幕。时长约 18 秒，循环顺畅。"
   },
   "ja": {
+    "posManual": "このタイルではない？手動で指定",
+    "escrevaAgora": "見つかりました。次は動画の締めくくりを書いてください。あなたの言葉こそが主役です。",
+    "previaRot": "こう終わります:",
+    "semTexto": "まだテキストがありません。動画はロゴだけで終わります。",
     "gravandoC": "描画中… {p}%",
     "podeGravarAgora": "スマートフォンでも動作します — 画面キャプチャは使いません。",
     "baixarImagem": "⬇ 画像をダウンロード",
@@ -1182,7 +1218,7 @@ const IDIOMAS = {
     "sonar": "ソナー",
     "grade": "グリッド",
     "limpo": "シンプル",
-    "resumo": "エンドカードのテキストと手動指定",
+    "resumo": "最後に出るあなたの言葉",
     "rotTitulo": "タイトル",
     "rotLinha": "サブタイトル",
     "rotRodape": "フッター",
@@ -1252,7 +1288,10 @@ let logoAtual = null;                                 // Image do usuario
  */
 let textoDoExemplo = false;
 for (const campo of ["t1", "t2", "t3"]) {
-  $(campo).addEventListener("input", () => { textoDoExemplo = false; });
+  $(campo).addEventListener("input", () => {
+    textoDoExemplo = false;
+    textos();        // o palco e a miniatura reagem a cada tecla
+  });
 }
 let proprio = false;                                  // o video na tela e o dele?
 
@@ -1292,11 +1331,36 @@ function textos(){
   por($("titulo"), ($("t1").value || "").trim());
   por($("frase"),  ($("t2").value || "").trim());
   por($("rodape"), ($("t3").value || "").trim() || "Crypto World&rsquo;s Fair &nbsp;·&nbsp; Colosseum");
+  /*
+   * A regua e um divisor: sem titulo embaixo dela, sobrava um risco solto no
+   * meio do cartao, que parecia defeito e nao escolha. Quem nao escreve nada
+   * agora termina em logotipo + rodape, limpo de proposito.
+   */
+  $("regua").style.display = ($("t1").value || "").trim() ? "" : "none";
   encolherPraCaber($("titulo"), 4.6, 2.4);
   encolherPraCaber($("frase"), 2.9, 1.6);
   encolherPraCaber($("rodape"), 2.2, 1.3);
   encolherPraCaber($("chapeu"), 2.6, 1.5);
   encolherPraCaber($("credito"), 2.1, 1.2);
+  atualizarPrevia();
+}
+
+/**
+ * Desenha o cartao final na miniatura, com o mesmo `desenharQuadro` que grava
+ * o arquivo - entao o que se ve aqui e o que sai no MP4, nao uma aproximacao.
+ *
+ * Chamada de dentro de `textos()`, que ja roda quando a cor, o ritmo ou o
+ * final mudam; os campos de texto passaram a chama-la tambem a cada tecla.
+ */
+function atualizarPrevia(){
+  const c = $("previaFim");
+  if (!c || !mosaico.complete || !mosaico.naturalWidth) return;
+  try {
+    const o = opcoesDoVideo();
+    const g = c.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    desenharQuadro(g, 16000 * o.ritmo, o);   // depois de tudo entrar, antes da cortina
+  } catch { /* antes de a pagina estar pronta, nao ha o que desenhar */ }
 }
 
 /**
@@ -1518,6 +1582,21 @@ function esquecer(){
 
 /** Chamado toda vez que a pessoa CONFIRMA uma celula - clicando ou digitando. */
 function confirmar(origem){
+  /*
+   * O momento em que a pessoa reconhece a propria celula e o unico em que ela
+   * esta claramente engajada - e era exatamente aqui que o produto ficava
+   * calado. Os campos de texto viviam num <details> fechado, rotulado como se
+   * fossem ajuste avancado, e quem nao os abria baixava um video que termina
+   * sem dizer nada. Abrir agora, e pedir o texto agora, e o que transforma
+   * "achei meu logo" em "tenho um video meu".
+   */
+  const painel = document.querySelector("details");
+  if (painel && !painel.open) painel.open = true;
+  if (!($("t1").value || "").trim() && !($("t2").value || "").trim()) {
+    estado.textContent = T("escrevaAgora");
+    setTimeout(() => { try { $("t1").focus({ preventScroll: true }); } catch {} }, 60);
+  }
+
   const d = { ...celula, mosaico: mosaicoAtual, quando: Date.now() };
   const src = nitido.getAttribute("src") || "";
   if (src.startsWith("data:") && src.length < LIMITE_LOGO) { d.logo = src; d.classe = nitido.className; }
@@ -2083,7 +2162,8 @@ function desenharQuadro(g, t, opcoes){
     textoCentrado(g, txt.chapeu, L*.07, L*.026, "#9fb4c9", L*.0094, true);
     g.globalAlpha = 1;
   }
-  const regua = sobe(11.6, 1.1, EASE.sai);
+  // sem titulo, a regua seria um divisor dividindo nada - ver textos()
+  const regua = txt.titulo ? sobe(11.6, 1.1, EASE.sai) : 0;
   if (regua > 0){
     const w = L*.38*regua;
     const grd = g.createLinearGradient(L/2-w/2, 0, L/2+w/2, 0);
