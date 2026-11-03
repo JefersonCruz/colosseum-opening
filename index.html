@@ -795,7 +795,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261102-836ab41";
+const VERSAO = "20261102-e7e29ad";
 
 /* ===================================================================
    IDIOMAS
@@ -2178,6 +2178,21 @@ async function gravar(){
   const tela = document.createElement("canvas");
   tela.width = tela.height = LADO;
   const g = tela.getContext("2d");
+  /*
+   * Sem esta linha o arquivo saia visivelmente pior que a previa, e a causa
+   * nao era o bitrate: o mosaico tem 3072px e cada quadro o reduz a 1080, e
+   * o padrao do Chrome para `imageSmoothingQuality` e "low". Numa reducao de
+   * quase 3x isso serrilha - e serrilhado em movimento vira cintilacao, bem
+   * no plano de abertura, que e onde aparecem os ~3.000 logos pequenos.
+   *
+   * Medido: +12 dB de PSNR contra o quadro desenhado em alta, no MESMO
+   * bitrate, e o arquivo ate encolhe um pouco (11,9 -> 11,7 MB), porque
+   * serrilhado e ruido e ruido custa bits.
+   *
+   * Os outros canvas do arquivo (o do casamento de logo, o da imagem) ja
+   * faziam isso. O da gravacao tinha ficado de fora.
+   */
+  g.imageSmoothingQuality = "high";
 
   const opcoes = opcoesDoVideo();
   const total = duracaoTotal(opcoes.ritmo);
