@@ -795,7 +795,7 @@ const PERFIL = "Viligion";
  * guardam versao antiga com facilidade. Sem isto, cada relato virava adivinha
  * sobre se o problema ainda existe ou se e cache.
  */
-const VERSAO = "20261030-ccd9485";
+const VERSAO = "20261102-836ab41";
 
 /* ===================================================================
    IDIOMAS
@@ -1695,6 +1695,55 @@ $("tela").onclick = () => document.fullscreenElement ? document.exitFullscreen()
    pagina no meio da gravacao, o palco se move, e um retangulo fixo passaria
    a gravar o lugar errado.
    =================================================================== */
+/* ===================================================================
+   COMPARTILHAR
+
+   Postar direto no X a partir daqui nao da: exigiria app registrado, OAuth e
+   um backend pra guardar o segredo - uma pagina estatica nao tem onde
+   esconder credencial - alem de plano pago da API pra enviar midia.
+
+   O que da, e e melhor, e entregar o arquivo pro proprio aparelho decidir:
+   `navigator.share` abre a folha de compartilhamento do sistema, e a pessoa
+   escolhe X, Telegram, WhatsApp ou o que tiver instalado. Sem chave, sem
+   servidor, sem depender de uma rede especifica.
+
+   Conferido neste Chrome: canShare aceita video/mp4. Onde nao aceitar, o
+   botao nem aparece e o download continua sendo o caminho.
+
+   ATENCAO A QUEM FOR MEXER EM gravar() OU EM baixarImagem():
+
+   este bloco ja foi apagado uma vez, por uma reescrita de gravar() que nao
+   percebeu que as duas funcoes dependiam dele. O resultado passou
+   despercebido porque a animacao continuava perfeita na tela: so quebrava
+   DEPOIS da gravacao terminar, na hora de entregar o arquivo. Com
+   "use strict", `videoGravado = ...` numa variavel nao declarada lanca
+   ReferenceError, e a linha do download logo abaixo nunca executava.
+
+   Ou seja: o video gravava inteiro e nao chegava a ninguem. Se for mexer,
+   grave de verdade e CONFIRA O ARQUIVO - desenhar quadros nao exercita
+   este caminho.
+   =================================================================== */
+let videoGravado = null;   // { arquivo, nome }
+
+function podeCompartilhar(arquivo){
+  return !!(navigator.canShare && navigator.share && navigator.canShare({ files: [arquivo] }));
+}
+
+$("compartilhar").onclick = async () => {
+  if (!videoGravado) return;
+  if (!podeCompartilhar(videoGravado.arquivo)) {
+    estado.textContent = T("semCompartilhar");
+    return;
+  }
+  estado.textContent = T("compartilhando");
+  try {
+    await navigator.share({
+      files: [videoGravado.arquivo],
+      text: `Found us in the Crypto World's Fair mosaic.\n\nMade with @${PERFIL}'s free tool: ${PAGINA}`,
+    });
+  } catch { /* a pessoa fechou a folha; nada a fazer */ }
+};
+
 const FORMATOS = [
   ["video/mp4;codecs=avc1", "mp4"],
   ["video/mp4", "mp4"],
